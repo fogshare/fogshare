@@ -1,0 +1,84 @@
+#
+# Fogshare - Ingress Nginx Virtual Host Template
+#
+# Copyright (c) 2026 Fogshare Contributors
+# Licensed under the MIT License.
+#
+
+server {
+    listen ${HTTP_PORT};
+    server_name ${ADMIN_DOMAIN} ${SHARE_DOMAIN} *.${SHARE_DOMAIN} 127.0.0.1;
+
+    # Maximum allowed request body size for uploads
+    client_max_body_size ${MAX_UPLOAD_MB}M;
+
+    # -------------------------------------------------------------------------
+    # 1. Internal Accelerated File Delivery (X-Accel-Redirect)
+    # -------------------------------------------------------------------------
+
+    # Repository files delivered directly via kernel sendfile
+    location ~ ^/_internal_files/(.*)$ {
+        internal;
+        alias /app/data/files/$1;
+        sendfile on;
+        tcp_nopush on;
+        max_ranges 0;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # Virtual library dependencies delivered directly via kernel sendfile
+    location ~ ^/_internal_libs/(.*)$ {
+        internal;
+        alias /app/data/libs/$1;
+        sendfile on;
+        tcp_nopush on;
+        max_ranges 0;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # -------------------------------------------------------------------------
+    # 2. Static UI Asset Bypass (Direct Serving)
+    # -------------------------------------------------------------------------
+    location ~ ^/(favicon\.ico|logo\.svg)$ {
+        root /app/public;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+        add_header X-Content-Type-Options "nosniff" always;
+        access_log off;
+    }
+
+    # Deny access to hidden system metadata and version control directories
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+
+    # -------------------------------------------------------------------------
+    # 3. Dynamic Application Reverse Proxy (Starman Backend)
+    # -------------------------------------------------------------------------
+    location / {
+        proxy_pass http://127.0.0.1:3647;
+
+        # Standard ingress forwarding headers
+        proxy_set_header Host $http_host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Accel-Support "1";
+
+        # HTTP/1.1 persistent connections and upgrade support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+
+        # Disable buffering to allow immediate chunk streaming and reduce disk I/O
+        proxy_buffering off;
+        proxy_request_buffering off;
+
+        # Extended timeouts for large payload transfers
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 300s;
+        proxy_read_timeout 300s;
+    }
+}

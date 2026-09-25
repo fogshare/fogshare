@@ -1,0 +1,19 @@
+{
+  "link_mode": "subdomain",
+  "share_domain": "localhost",
+  "admin_domain": "admin.localhost",
+  "app_data_dir": "./data",
+  "app_secret": "",
+  "api_token": "",
+  "max_upload_mb": 128,
+  "max_unzip_mb": 512,
+  "max_zip_entries": 10000,
+  "enable_x_accel": 1,
+  "enable_https": 0,
+  "site_name": "Fogshare",
+  "logo_url": "/logo.svg",
+  "favicon_url": "/favicon.ico",
+  "footer_html": "",
+  "custom_css": "",
+  "custom_js": ""
+}

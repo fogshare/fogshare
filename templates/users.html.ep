@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!--
+  Fogshare - Administrator User Management Template
+  Copyright (c) 2026 Fogshare Contributors
+  Licensed under the MIT License.
+-->
+<html lang="<%= languages %>">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= $site_name %> - <%= l('Account Manager') %></title>
+    <link rel="icon" href="<%= $favicon_url // '/favicon.ico' %>">
+
+    <script>
+        (function () {
+            const saved = localStorage.getItem('pico_theme') || 'auto';
+            if (saved !== 'auto') {
+                document.documentElement.setAttribute('data-theme', saved);
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+    % if ($custom_css) {
+        % if ($custom_css =~ m{^https?://} || $custom_css =~ m{^/}) {
+            <link rel="stylesheet" href="<%= $custom_css %>">
+        % } else {
+            <style><%== $custom_css %></style>
+        % }
+    % }
+
+    <style>
+        :root {
+            --pico-font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+        }
+
+        body {
+            font-family: var(--pico-font-family);
+        }
+
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 1.15rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            letter-spacing: normal;
+            text-transform: none;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            user-select: none;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .hero-icon {
+            font-size: 2.8rem;
+            margin-bottom: 8px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .top-toolbar {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .header-icon-btn {
+            box-sizing: border-box !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 32px !important;
+            min-width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+        }
+
+        .lang-select {
+            box-sizing: border-box !important;
+            width: auto !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            max-height: 32px !important;
+            margin: 0 !important;
+            padding: 0 24px 0 10px !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+
+        .user-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            font-size: 0.9rem;
+        }
+
+        .user-row:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+
+<body style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; position: relative;">
+    <aside class="top-toolbar">
+        <select class="lang-select secondary outline" onchange="location.href='/set-lang?lang=' + encodeURIComponent(this.value)">
+            <option value="en" <%= languages =~ /^en/i ? 'selected' : '' %>>English</option>
+            <option value="es" <%= languages =~ /^es/i ? 'selected' : '' %>>Español</option>
+            <option value="de" <%= languages =~ /^de/i ? 'selected' : '' %>>Deutsch</option>
+            <option value="fr" <%= languages =~ /^fr/i ? 'selected' : '' %>>Français</option>
+            <option value="zh-cn" <%= languages =~ /^zh[-_]cn/i ? 'selected' : '' %>>简体中文</option>
+            <option value="zh-tw" <%= languages =~ /^zh[-_](?:tw|hk)/i ? 'selected' : '' %>>繁體中文</option>
+            <option value="ja" <%= languages =~ /^ja/i ? 'selected' : '' %>>日本語</option>
+            <option value="ko" <%= languages =~ /^ko/i ? 'selected' : '' %>>한국어</option>
+        </select>
+        <button class="header-icon-btn secondary outline" onclick="toggleTheme()"
+            title="<%= l('Toggle theme') %>" aria-label="<%= l('Toggle theme') %>">
+            <span class="material-symbols-outlined" style="font-size: 1.05rem;" aria-hidden="true">dark_mode</span>
+        </button>
+    </aside>
+
+    <main class="container" style="max-width: 600px; width: 92%;">
+        <article style="margin: 0; padding: 40px 36px; text-align: center;">
+            <div class="hero-icon">
+                % if ($logo_url) {
+                    <img src="<%= $logo_url %>" alt="<%= $site_name %>" style="max-height: 42px; max-width: 180px; width: auto; height: auto; object-fit: contain; vertical-align: middle; margin-bottom: 10px;">
+                % } else {
+                    <span class="material-symbols-outlined" style="font-size: 2.8rem; color: var(--pico-primary-background);" aria-hidden="true">group</span>
+                % }
+            </div>
+
+            <h3 style="margin-bottom: 6px;"><%= l('Admin Settings') %></h3>
+            <p style="color: var(--pico-muted-color); font-size: 0.85rem; margin-bottom: 20px;">
+                <%= l('Manage administrator credentials for this node.') %>
+            </p>
+
+            % if (my $err = flash('err')) {
+            <p style="color: var(--pico-color-red-500); font-size: 0.85rem; margin-bottom: 15px; background: rgba(239, 68, 68, 0.08); padding: 8px 12px; border-radius: 6px; text-align: left; display: flex; align-items: center; gap: 6px;">
+                <span class="material-symbols-outlined" style="font-size: 1.1rem;" aria-hidden="true">error</span>
+                <span><%= $err %></span>
+            </p>
+            % }
+
+            % if (my $msg = flash('msg')) {
+            <p style="color: var(--pico-color-green-500); font-size: 0.85rem; margin-bottom: 15px; background: rgba(16, 185, 129, 0.08); padding: 8px 12px; border-radius: 6px; text-align: left; display: flex; align-items: center; gap: 6px;">
+                <span class="material-symbols-outlined" style="font-size: 1.1rem;" aria-hidden="true">check_circle</span>
+                <span><%= $msg %></span>
+            </p>
+            % }
+
+            <!-- Administrator Accounts List -->
+            <div style="border: 1px solid var(--pico-muted-border-color); border-radius: 8px; margin-bottom: 20px; text-align: left;">
+                % for my $u (@$users) {
+                <div class="user-row">
+                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;">
+                        <strong><%= $u %></strong>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-shrink: 0;">
+                        <button type="button" class="secondary outline btn-edit-user" 
+                            data-username="<%= $u %>"
+                            style="width: 52px; margin: 0; padding: 3px 0; font-size: 0.75rem; text-align: center; white-space: nowrap; flex-shrink: 0;">
+                            <%= l('Edit') %>
+                        </button>
+
+                        % if ($u ne $cur_user) {
+                        <form method="POST" action="/admin/users/delete" style="display: inline-flex; margin: 0;" onsubmit="return confirm('<%= l('Delete user [_1]?', $u) %>');">
+                            %= csrf_field
+                            <input type="hidden" name="username" value="<%= $u %>">
+                            <button type="submit" class="contrast outline" 
+                                style="width: 64px; margin: 0; padding: 3px 0; font-size: 0.75rem; text-align: center; white-space: nowrap; flex-shrink: 0;">
+                                <%= l('Delete') %>
+                            </button>
+                        </form>
+                        % } else {
+                        <span style="display: inline-block; width: 64px; text-align: center; font-size: 0.75rem; color: var(--pico-color-green-500); background: rgba(16, 185, 129, 0.12); padding: 3px 0; border-radius: 4px; flex-shrink: 0;"><%= l('You') %></span>
+                        % }
+                    </div>
+                </div>
+                % }
+            </div>
+
+            <!-- Add / Update Account Form -->
+            <form method="POST" action="/admin/users/save" style="margin-bottom: 16px; text-align: left;">
+                %= csrf_field
+                <input type="text" id="user-input" name="username" placeholder="<%= l('Username') %>" required autocomplete="off" autocapitalize="none"
+                    style="text-align: center; margin-bottom: 10px;">
+                <input type="password" id="pass-input" name="password" placeholder="<%= l('New Password') %>" required autocomplete="new-password"
+                    style="text-align: center; margin-bottom: 14px;">
+                <button type="submit" id="submit-btn" style="width: 100%; margin-bottom: 0;"><%= l('Save / Update') %></button>
+            </form>
+
+            <footer style="margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--pico-muted-border-color); display: flex; justify-content: space-between; align-items: center;">
+                <a href="/admin/" class="secondary" style="font-size: 0.85rem; text-decoration: none;"><%= l('← Console') %></a>
+                <a href="/admin/logout" class="contrast" style="font-size: 0.85rem; text-decoration: none;"><%= l('Logout') %></a>
+            </footer>
+        </article>
+    </main>
+
+    % if ($footer_html) {
+    <footer style="margin-top: 0.85rem; padding: 0; text-align: center; font-size: 0.8rem; line-height: 1.4; color: var(--pico-muted-color); max-width: 600px; width: 92%;">
+        <div style="margin: 0; padding: 0;"><%== $footer_html %></div>
+    </footer>
+    % }
+
+    <script>
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') ||
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', target);
+            localStorage.setItem('pico_theme', target);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const userInput = document.getElementById('user-input');
+            const passInput = document.getElementById('pass-input');
+            const submitBtn = document.getElementById('submit-btn');
+            const defaultSubmitText = submitBtn.textContent;
+            const updateTpl = '<%= l('Update [_1]', '__USER__') %>';
+
+            document.querySelectorAll('.btn-edit-user').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const name = btn.getAttribute('data-username') || '';
+                    userInput.value = name;
+                    submitBtn.textContent = updateTpl.replace('__USER__', name);
+                    passInput.value = '';
+                    passInput.focus();
+                });
+            });
+
+            userInput.addEventListener('input', () => {
+                if (!userInput.value.trim()) {
+                    submitBtn.textContent = defaultSubmitText;
+                }
+            });
+        });
+    </script>
+
+    % if ($custom_js) {
+        % if ($custom_js =~ m{^https?://} || $custom_js =~ m{^/}) {
+            <script src="<%= $custom_js %>" defer></script>
+        % } else {
+            <script><%== $custom_js %></script>
+        % }
+    % }
+</body>
+
+</html>

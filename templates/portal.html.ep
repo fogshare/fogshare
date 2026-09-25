@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<!--
+  Fogshare - Public Portal & Cute Slug Shuttle Entry
+  Copyright (c) 2026 Fogshare Contributors
+  Licensed under the MIT License.
+-->
+<html lang="<%= languages %>">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= $site_name %> - <%= l('File Sharing Node') %></title>
+    <link rel="icon" href="<%= $favicon_url // '/favicon.ico' %>">
+
+    <script>
+        (function () {
+            const saved = localStorage.getItem('pico_theme') || 'auto';
+            if (saved !== 'auto') {
+                document.documentElement.setAttribute('data-theme', saved);
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+    % if ($custom_css) {
+        % if ($custom_css =~ m{^https?://} \vert{}\vert{}$custom_css =~ m{^/}) {
+            <link rel="stylesheet" href="<%= $custom_css %>">
+        % } else {
+            <style><%== $custom_css %></style>
+        % }
+    % }
+
+    <style>
+        :root {
+            --pico-font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+        }
+
+        body {
+            font-family: var(--pico-font-family);
+        }
+
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 1.15rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            letter-spacing: normal;
+            text-transform: none;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            user-select: none;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .hero-icon {
+            font-size: 2.8rem;
+            margin-bottom: 8px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .top-toolbar {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .header-icon-btn {
+            box-sizing: border-box !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 32px !important;
+            min-width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+        }
+
+        .lang-select {
+            box-sizing: border-box !important;
+            width: auto !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            max-height: 32px !important;
+            margin: 0 !important;
+            padding: 0 24px 0 10px !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+
+        .slug-input {
+            text-align: center;
+            font-size: 1.15rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
+            font-family: inherit;
+        }
+    </style>
+</head>
+
+<body style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; position: relative;">
+    <aside class="top-toolbar">
+        <select class="lang-select secondary outline" onchange="location.href='/set-lang?lang=' + encodeURIComponent(this.value)">
+            <option value="en" <%= languages =~ /^en/i ? 'selected' : '' %>>English</option>
+            <option value="es" <%= languages =~ /^es/i ? 'selected' : '' %>>Español</option>
+            <option value="de" <%= languages =~ /^de/i ? 'selected' : '' %>>Deutsch</option>
+            <option value="fr" <%= languages =~ /^fr/i ? 'selected' : '' %>>Français</option>
+            <option value="zh-cn" <%= languages =~ /^zh[-_]cn/i ? 'selected' : '' %>>简体中文</option>
+            <option value="zh-tw" <%= languages =~ /^zh[-_](?:tw|hk)/i ? 'selected' : '' %>>繁體中文</option>
+            <option value="ja" <%= languages =~ /^ja/i ? 'selected' : '' %>>日本語</option>
+            <option value="ko" <%= languages =~ /^ko/i ? 'selected' : '' %>>한국어</option>
+        </select>
+        <button class="header-icon-btn secondary outline" onclick="toggleTheme()"
+            title="<%= l('Toggle theme') %>" aria-label="<%= l('Toggle theme') %>">
+            <span class="material-symbols-outlined" style="font-size: 1.05rem;" aria-hidden="true">dark_mode</span>
+        </button>
+    </aside>
+
+    <main class="container" style="max-width: 600px; width: 92%;">
+        <article style="margin: 0; padding: 40px 36px; text-align: center;">
+            <div class="hero-icon">
+                % if ($logo_url) {
+                    <img src="<%= $logo_url \%>" alt="<\%= $site_name %>" style="max-height: 42px; max-width: 180px; width: auto; height: auto; object-fit: contain; vertical-align: middle; margin-bottom: 10px;">
+                % } else {
+                    <span class="material-symbols-outlined" style="font-size: 2.8rem; color: var(--pico-primary-background);" aria-hidden="true">bolt</span>
+                % }
+            </div>
+
+            <h3 style="margin-bottom: 6px;"><%= $site_name %></h3>
+            <p style="color: var(--pico-muted-color); font-size: 0.9rem; margin-bottom: 20px;">
+                <%= l('Private sharing portal is active.') %>
+            </p>
+
+            <!-- Cute Slug Shuttle Dispatcher -->
+            <form id="slug-shuttle-form" onsubmit="handleShuttle(event)" style="margin-bottom: 0;">
+                <input type="text" id="slug-input" class="slug-input"
+                    placeholder="<%= l('Cute Slug') %> (e.g. pomikato)"
+                    autocomplete="off" autocapitalize="none" spellcheck="false" required autofocus>
+
+                <button type="submit" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 0;">
+                    <span><%= l('Unlock') %></span>
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;" aria-hidden="true">arrow_forward</span>
+                </button>
+            </form>
+        </article>
+    </main>
+
+    % if ($footer_html) {
+    <footer style="margin-top: 0.85rem; padding: 0; text-align: center; font-size: 0.8rem; line-height: 1.4; color: var(--pico-muted-color); max-width: 600px; width: 92%;">
+        <div style="margin: 0; padding: 0;"><%== $footer_html %></div>
+    </footer>
+    % }
+
+    <script>
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') ||
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', target);
+            localStorage.setItem('pico_theme', target);
+        }
+
+        function handleShuttle(e) {
+            e.preventDefault();
+            const input = document.getElementById('slug-input');
+            let slug = (input.value || '').trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '');
+
+            if (!slug) return;
+
+            const linkMode = "<%= $Fogshare::Context::LINK_MODE %>";
+            const host = window.location.hostname;
+            const portStr = window.location.port ? (':' + window.location.port) : '';
+            const protocol = window.location.protocol;
+
+            // Subdomain mode (e.g., https://pomikato.domain.com/ or https://pomikato.localhost:3642/)
+            if (linkMode === 'subdomain') {
+                if (host === 'localhost' || host === '127.0.0.1') {
+                    window.location.href = `${protocol}//${slug}.localhost${portStr}/`;
+                } else {
+                    window.location.href = `${protocol}//${slug}.${host}${portStr}/`;
+                }
+                return;
+            }
+
+            // Path prefix mode (e.g., https://domain.com/pomikato/)
+            window.location.href = `/${slug}/`;
+        }
+    </script>
+
+    % if ($custom_js) {
+        % if ($custom_js =~ m{^https?://} \vert{}\vert{}$custom_js =~ m{^/}) {
+            <script src="<%= $custom_js %>" defer></script>
+        % } else {
+            <script><%== $custom_js %></script>
+        % }
+    % }
+</body>
+
+</html>

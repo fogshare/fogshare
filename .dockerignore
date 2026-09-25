@@ -1,0 +1,38 @@
+#
+# Fogshare - Docker Build Ignore Rules
+#
+# Copyright (c) 2026 Fogshare Contributors
+# Licensed under the MIT License.
+#
+
+# Version control and documentation (not needed inside container runtime)
+.git
+.gitignore
+.dockerignore
+README.md
+LICENSE
+
+# Persistent storage and host-local Perl libraries
+data/
+local/
+
+# Sensitive configurations and runtime locks
+fogshare.json
+passwd.json
+*.lock
+.worker.lock
+
+# Temporary build artifacts, archives, and log files
+*.tmp
+*.zip
+*.tar.gz
+*.log
+fogshare_*.zip
+
+# Operating system and editor artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/

@@ -1,0 +1,178 @@
+#!/usr/bin/env perl
+#
+# Fogshare - Lightweight, self-hosted file distribution and web showcase system.
+#
+# Copyright (c) 2026 Fogshare Contributors
+# Licensed under the MIT License.
+#
+
+use Mojolicious::Lite -signatures;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
+use Fogshare::Context qw(init_app_context);
+use Fogshare::Worker;
+use Fogshare::Controller::Guest;
+use Fogshare::Controller::Admin;
+
+# Initialize core application context and configuration
+init_app_context(app);
+
+# Plugins configuration
+plugin 'I18N' => { namespace => 'Fogshare::I18N', default => 'en' };
+plugin 'Fogshare::Helpers';
+
+# Register controller namespaces
+app->routes->namespaces(['Fogshare::Controller']);
+
+# -----------------------------------------------------------------------------
+# Global Utility Routes
+# -----------------------------------------------------------------------------
+
+# Language switcher endpoint: sets preference cookie and safely redirects back
+get '/set-lang' => sub ($c) {
+    my $lang = lc($c->param('lang') // '');
+
+    if ($lang =~ /^(zh[-_]tw|zh[-_]hk)$/) {
+        $lang = 'zh-tw';
+    } elsif ($lang =~ /^zh/) {
+        $lang = 'zh-cn';
+    } elsif ($lang =~ /^(ja|ko|de|fr|es)$/) {
+        $lang = $1;
+    } else {
+        $lang = 'en';
+    }
+
+    $c->cookie(
+        fogshare_lang => $lang,
+        {
+            path     => '/',
+            max_age  => 86400 * 365,
+            samesite => 'Lax'
+        }
+    );
+
+    # Safe redirect parsing to prevent open-redirect vulnerabilities
+    my $ref = $c->req->headers->referrer // '';
+    my ($target_path) = $ref =~ m{^(?:https?://[^/]+)?(/.*)$}i;
+
+    # Fallback to root if path is missing, malformed, or protocol-relative (e.g., //evil.com)
+    $target_path = '/' unless defined $target_path && $target_path =~ m{^/[^/\\]};
+
+    return $c->redirect_to($target_path);
+};
+
+# -----------------------------------------------------------------------------
+# Route Guards
+# -----------------------------------------------------------------------------
+
+# Host-gated guard: restricts matching routes strictly to the admin domain
+my $guard_admin_host = sub ($c) {
+    return 1 if $c->stash('is_admin_host');
+    $c->reply->not_found;
+    return undef;
+};
+
+# -----------------------------------------------------------------------------
+# Admin API Routes (Restricted to Admin Host)
+# -----------------------------------------------------------------------------
+
+my $api = app->routes->under('/api' => $guard_admin_host);
+$api->post('/deploy')->to('api#deploy');
+$api->get('/shares')->to('api#list');
+$api->post('/teardown')->to('api#teardown');
+
+# -----------------------------------------------------------------------------
+# Admin UI & Management Routes (Restricted to Admin Host)
+# -----------------------------------------------------------------------------
+
+my $admin_public = app->routes->under('/admin' => $guard_admin_host);
+$admin_public->get('/login')->to('admin#login_page');
+$admin_public->post('/login')->to('admin#login_action');
+$admin_public->get('/logout')->to('admin#logout');
+
+# Authenticated admin routes
+my $admin = $admin_public->under('')->to('admin#check_admin');
+$admin->get('')->to('admin#dashboard');
+$admin->get('/')->to('admin#dashboard');
+$admin->post('/mkdir')->to('admin#make_dir');
+$admin->post('/upload')->to('admin#upload');
+$admin->post('/file/rename')->to('admin#rename_file');
+$admin->post('/file/move')->to('admin#move_file');
+$admin->post('/file/copy')->to('admin#copy_file');
+$admin->post('/file/delete')->to('admin#delete_file');
+$admin->post('/share')->to('admin#create_share');
+$admin->post('/share/update')->to('admin#update_share');
+$admin->post('/share/action')->to('admin#share_action');
+$admin->post('/share/batch')->to('admin#batch_action');
+$admin->get('/api/paths')->to('admin#api_paths');
+
+# User management endpoints
+$admin->get('/users')->to('users#list');
+$admin->post('/users/save')->to('users#save');
+$admin->post('/users/delete')->to('users#delete');
+
+# -----------------------------------------------------------------------------
+# Public & Share Delivery Routes
+# -----------------------------------------------------------------------------
+
+# Shared static library delivery (e.g., p5.js, Three.js vendors)
+get '/libs/*lib_path' => sub ($c) {
+    return $c->serve_shared_lib($c->stash('lib_path'));
+};
+
+# Root endpoint dispatcher
+get '/' => sub ($c) {
+    # 1. Subdomain-based share entrypoint
+    if ($c->stash('is_subdomain')) {
+        $c->stash(filepath => '');
+        return Fogshare::Controller::Guest::serve($c);
+    }
+
+    # 2. Admin host entrypoint
+    if ($c->stash('is_admin_host')) {
+        return Fogshare::Controller::Admin::dashboard($c) if $c->session('is_admin');
+        return Fogshare::Controller::Admin::login_page($c);
+    }
+
+    # 3. Default public portal landing page
+    return $c->render(template => 'portal');
+};
+
+# Fallback path dispatcher for guest shares (subdomain or path-prefix mode)
+any(['GET', 'POST'], '/*req_path', { req_path => '' })->to(cb => sub ($c) {
+    my $raw_path = $c->stash('req_path') // '';
+    $raw_path =~ s{^/+}{};
+    $raw_path =~ s{/+$}{};
+
+    # Mode A: Subdomain routing (e.g., https://pomikato.domain.com/*)
+    if ($c->stash('is_subdomain')) {
+        return Fogshare::Controller::Guest::auth($c)   if $raw_path eq 'auth';
+        return Fogshare::Controller::Guest::verify($c) if $raw_path eq 'verify';
+
+        $c->stash(filepath => $raw_path);
+        return Fogshare::Controller::Guest::serve($c);
+    }
+
+    # Mode B: Path prefix routing (e.g., https://domain.com/pomikato/*)
+    if ($raw_path =~ m{^([^/]+)(?:/(.*))?$}) {
+        my ($slug, $filepath) = ($1, $2 // '');
+        $c->stash(slug => $slug, filepath => $filepath);
+
+        return Fogshare::Controller::Guest::auth($c)   if $filepath eq 'auth';
+        return Fogshare::Controller::Guest::verify($c) if $filepath eq 'verify';
+        return Fogshare::Controller::Guest::serve($c);
+    }
+
+    return $c->reply->not_found;
+});
+
+# -----------------------------------------------------------------------------
+# Server Bootstrapping
+# -----------------------------------------------------------------------------
+
+# Start background maintenance supervisor (cleanup tasks, quota updates)
+Fogshare::Worker::start_singleton_worker();
+
+# Start web application
+app->start;

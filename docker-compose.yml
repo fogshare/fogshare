@@ -1,0 +1,56 @@
+#
+# Fogshare - Docker Compose Service Definition
+#
+# Copyright (c) 2026 Fogshare Contributors
+# Licensed under the MIT License.
+#
+
+services:
+  fogshare:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fogshare:latest
+    container_name: fogshare-app
+    restart: unless-stopped
+
+    # Public ingress port mapping (Host:Container)
+    ports:
+      - "3642:3642"
+
+    # Runtime configuration parameters
+    environment:
+      - HTTP_PORT=3642
+      - APP_ADMIN_DOMAIN=admin.localhost
+      - APP_SHARE_DOMAIN=localhost
+      - APP_MAX_UPLOAD_MB=128
+      - TZ=UTC
+
+    # Persistent storage mount for files, configurations, and state databases
+    volumes:
+      - ./data:/app/data
+
+    # Container health probe
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3642/favicon.ico >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # Resource constraints to ensure runtime stability
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    # Standard JSON log rotation policy to prevent disk saturation
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

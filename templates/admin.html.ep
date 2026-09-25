@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<!--
+  Fogshare - Administrator Master Dashboard Template
+  Copyright (c) 2026 Fogshare Contributors
+  Licensed under the MIT License.
+-->
+<html lang="<%= languages %>">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="<%= csrf_token %>">
+    <title><%= $site_name %> - <%= l('Dashboard') %></title>
+    <link rel="icon" href="<%= $favicon_url // '/favicon.ico' %>">
+
+    <script>
+        (function () {
+            try {
+                const saved = localStorage.getItem('pico_theme');
+                if (saved === 'light' || saved === 'dark') {
+                    document.documentElement.setAttribute('data-theme', saved);
+                }
+            } catch (e) {}
+        })();
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+    % if ($custom_css) {
+        % if ($custom_css =~ m{^https?://} || $custom_css =~ m{^/}) {
+            <link rel="stylesheet" href="<%= $custom_css %>">
+        % } else {
+            <style><%== $custom_css %></style>
+        % }
+    % }
+
+    <style>
+        :root {
+            --pico-font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+        }
+
+        body {
+            padding-top: 15px;
+            font-family: var(--pico-font-family);
+        }
+
+        .main-container {
+            width: 95%;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 16px 12px;
+        }
+
+        main.main-container > article:last-child {
+            margin-bottom: 0;
+        }
+
+        .breadcrumb-nav {
+            margin-bottom: 15px;
+            font-size: 1.05rem;
+            word-break: break-all;
+        }
+
+        /* Tab navigation bar */
+        .tab-nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            padding-bottom: 10px;
+        }
+
+        .tab-nav a {
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tab-nav a.active {
+            background: var(--pico-primary-background);
+            color: var(--pico-primary-inverse);
+        }
+
+        /* Material Symbols baseline and rendering */
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 1.15rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            letter-spacing: normal;
+            text-transform: none;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            user-select: none;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Navigation action buttons */
+        .top-nav-btn {
+            box-sizing: border-box !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 0 10px !important;
+            margin: 0 !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+            text-decoration: none !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+        }
+
+        .top-nav-icon-btn {
+            box-sizing: border-box !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 28px !important;
+            min-width: 28px !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+        }
+
+        .lang-select {
+            box-sizing: border-box !important;
+            width: auto !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            margin: 0 !important;
+            padding: 0 24px 0 8px !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+
+        /* Desktop CSS Grid list system */
+        .flex-list-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .flex-list-header,
+        .flex-list-row {
+            display: grid;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .flex-list-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--pico-muted-color);
+            border-bottom: 2px solid var(--pico-muted-border-color);
+            padding: 8px 12px;
+        }
+
+        .flex-list-row {
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            transition: background 0.15s ease;
+        }
+
+        .flex-list-row:hover {
+            background-color: var(--pico-primary-hover-background);
+        }
+
+        .flex-list-row:last-child {
+            border-bottom: none;
+        }
+
+        .grid-tab-files {
+            grid-template-columns: minmax(0, 1fr) 110px 170px 80px;
+        }
+
+        .grid-tab-actives {
+            grid-template-columns: 180px minmax(0, 1fr) 110px 140px 140px 80px;
+        }
+
+        .grid-tab-expired {
+            grid-template-columns: 32px 160px minmax(0, 1fr) 100px 160px 120px 80px;
+        }
+
+        .grid-tab-trash {
+            grid-template-columns: 160px minmax(0, 1fr) 100px 150px 120px 80px;
+        }
+
+        .cell-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        .cell-right {
+            text-align: right;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .note-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.75rem;
+            color: var(--pico-muted-color);
+            margin-top: 3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 100%;
+        }
+
+        /* Hide mobile views on desktop */
+        .mobile-meta-sub,
+        .mobile-only {
+            display: none !important;
+        }
+
+        /* Row actions group */
+        .action-group {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+            vertical-align: middle;
+            margin: 0;
+            padding: 0;
+        }
+
+        button.action-btn,
+        a.action-btn,
+        details.dropdown summary {
+            box-sizing: border-box !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 28px !important;
+            min-width: 28px !important;
+            max-width: 28px !important;
+            height: 28px !important;
+            min-height: 28px !important;
+            max-height: 28px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 0.78rem !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+            cursor: pointer !important;
+        }
+
+        /* Action dropdown */
+        details.dropdown {
+            margin: 0 !important;
+            padding: 0 !important;
+            position: relative !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            border: none !important;
+        }
+
+        details.dropdown summary::-webkit-details-marker,
+        details.dropdown summary::after {
+            display: none !important;
+        }
+
+        details.dropdown ul {
+            position: absolute !important;
+            right: 0 !important;
+            top: 100% !important;
+            left: auto !important;
+            min-width: 155px !important;
+            padding: 6px 0 !important;
+            margin: 4px 0 0 0 !important;
+            z-index: 1050 !important;
+            list-style: none !important;
+            border-radius: 6px !important;
+            text-align: left !important;
+            background-color: var(--pico-card-background-color, #ffffff) !important;
+            border: 1px solid var(--pico-muted-border-color, #d0d7de) !important;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 6px 12px -4px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        details.dropdown ul li {
+            padding: 0 !important;
+            margin: 0 !important;
+            list-style: none !important;
+            display: block !important;
+            background: transparent !important;
+        }
+
+        details.dropdown ul li a,
+        details.dropdown ul li button {
+            box-sizing: border-box !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+            width: 100% !important;
+            height: 36px !important;
+            padding: 0 14px !important;
+            font-size: 0.82rem !important;
+            font-weight: 500 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            color: var(--pico-contrast, #1a202c) !important;
+            text-decoration: none !important;
+            box-shadow: none !important;
+            cursor: pointer !important;
+            white-space: nowrap !important;
+        }
+
+        details.dropdown ul li a .material-symbols-outlined,
+        details.dropdown ul li button .material-symbols-outlined {
+            color: var(--pico-contrast, #1a202c) !important;
+            font-size: 1.05rem !important;
+        }
+
+        details.dropdown ul li a:hover,
+        details.dropdown ul li button:hover {
+            background-color: var(--pico-primary-hover-background, rgba(0, 0, 0, 0.06)) !important;
+        }
+
+        details.dropdown ul li.divider {
+            height: 1px !important;
+            background-color: var(--pico-muted-border-color, #e2e8f0) !important;
+            margin: 4px 0 !important;
+            padding: 0 !important;
+        }
+
+        details.dropdown ul li button.destructive-btn {
+            color: var(--pico-color-red-500, #dc2626) !important;
+        }
+
+        details.dropdown ul li button.destructive-btn .material-symbols-outlined {
+            color: var(--pico-color-red-500, #dc2626) !important;
+        }
+
+        details.dropdown ul li button.destructive-btn:hover {
+            background-color: rgba(220, 38, 38, 0.1) !important;
+            color: var(--pico-color-red-600, #b91c1c) !important;
+        }
+
+        /* Mobile and Tablet Adaptation (< 992px) */
+        @media (max-width: 991.98px) {
+            .main-container {
+                width: 100% !important;
+                padding: 0 10px 10px !important;
+            }
+
+            header.main-container nav {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                padding-bottom: 12px !important;
+            }
+
+            header.main-container nav ul {
+                display: flex !important;
+                align-items: center !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+
+            header.main-container nav ul:first-child {
+                justify-content: flex-start !important;
+            }
+
+            header.main-container nav ul:last-child {
+                justify-content: flex-end !important;
+                gap: 6px !important;
+                flex-wrap: wrap !important;
+            }
+
+            .tab-nav {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 8px !important;
+                border-bottom: none !important;
+                padding-bottom: 0 !important;
+                margin-bottom: 16px !important;
+            }
+
+            .tab-nav a {
+                justify-content: center !important;
+                padding: 8px 10px !important;
+                font-size: 0.85rem !important;
+                text-align: center !important;
+                border-radius: 6px !important;
+            }
+
+            .flex-list-header {
+                display: none !important;
+            }
+
+            .flex-list-row {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 8px !important;
+                padding: 12px 14px !important;
+                background: var(--pico-card-background-color) !important;
+                border: 1px solid var(--pico-muted-border-color) !important;
+                border-radius: 8px !important;
+                margin-bottom: 10px !important;
+                position: relative !important;
+                overflow: visible !important;
+            }
+
+            .flex-list-row:has(details[open]) {
+                z-index: 120 !important;
+            }
+
+            .desktop-only-cell {
+                display: none !important;
+            }
+
+            .mobile-header-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                width: 100% !important;
+                min-width: 0 !important;
+                gap: 8px !important;
+                overflow: visible !important;
+            }
+
+            .mobile-only {
+                display: inline-flex !important;
+                flex-shrink: 0 !important;
+            }
+
+            .mobile-only details.dropdown {
+                position: relative !important;
+                overflow: visible !important;
+            }
+
+            .mobile-only details.dropdown[open] {
+                z-index: 100 !important;
+            }
+
+            .mobile-only details.dropdown ul {
+                right: 0 !important;
+                top: calc(100% + 4px) !important;
+                min-width: 160px !important;
+                max-width: 260px !important;
+                z-index: 1000 !important;
+            }
+
+            .mobile-meta-sub {
+                display: flex !important;
+                align-items: center !important;
+                flex-wrap: wrap !important;
+                gap: 10px !important;
+                font-size: 0.8rem !important;
+                color: var(--pico-muted-color) !important;
+                padding-top: 6px !important;
+                border-top: 1px dashed var(--pico-muted-border-color) !important;
+            }
+
+            .mobile-meta-sub span {
+                display: inline-flex !important;
+                align-items: center !important;
+                gap: 4px !important;
+            }
+        }
+
+        /* Modal dialogs and inputs */
+        dialog article {
+            max-width: 520px;
+            text-align: left;
+        }
+
+        .input-with-btn {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-with-btn input {
+            margin-bottom: 0;
+        }
+
+        .input-with-btn button {
+            width: auto;
+            white-space: nowrap;
+            padding: 0 12px;
+        }
+
+        .ttl-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .ttl-group input {
+            flex: 2;
+            margin-bottom: 0;
+        }
+
+        .ttl-group select {
+            flex: 3;
+            margin-bottom: 0;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--pico-muted-border-color);
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            background: var(--pico-card-background-color);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .drop-zone.dragover {
+            border-color: var(--pico-primary-background);
+            background: var(--pico-primary-hover-background);
+        }
+
+        .upload-progress-container {
+            display: none;
+            margin-top: 15px;
+        }
+
+        /* Lightweight toast alerts */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast-item {
+            min-width: 240px;
+            max-width: 420px;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--pico-card-background-color);
+            color: var(--pico-color);
+            border: 1px solid var(--pico-muted-border-color);
+            border-left: 4px solid var(--pico-primary-background);
+            opacity: 0;
+            transform: translateY(12px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            pointer-events: auto;
+            word-break: break-all;
+        }
+
+        .toast-item.toast-show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast-item.toast-error {
+            border-left-color: var(--pico-color-red-500);
+        }
+
+        .toast-item.toast-success {
+            border-left-color: var(--pico-color-green-500);
+        }
+    </style>
+</head>
+
+<body>
+    <header class="main-container" style="padding-bottom: 0;">
+        <nav>
+            <ul>
+                % if ($logo_url) {
+                    <li><img src="<%= $logo_url %>" alt="<%= $site_name %>" style="height: 26px; width: auto; vertical-align: middle;"></li>
+                % }
+                <li style="display: inline-flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="color: var(--pico-primary-background);" aria-hidden="true">bolt</span>
+                    <strong><%= $site_name %> <%= l('Dashboard') %></strong>
+                </li>
+            </ul>
+            <ul>
+                <li>
+                    <select class="lang-select secondary outline" onchange="location.href='/set-lang?lang=' + encodeURIComponent(this.value)">
+                        <option value="en" <%= languages =~ /^en/i ? 'selected' : '' %>>English</option>
+                        <option value="es" <%= languages =~ /^es/i ? 'selected' : '' %>>Español</option>
+                        <option value="de" <%= languages =~ /^de/i ? 'selected' : '' %>>Deutsch</option>
+                        <option value="fr" <%= languages =~ /^fr/i ? 'selected' : '' %>>Français</option>
+                        <option value="zh-cn" <%= languages =~ /^zh[-_]cn/i ? 'selected' : '' %>>简体中文</option>
+                        <option value="zh-tw" <%= languages =~ /^zh[-_](?:tw|hk)/i ? 'selected' : '' %>>繁體中文</option>
+                        <option value="ja" <%= languages =~ /^ja/i ? 'selected' : '' %>>日本語</option>
+                        <option value="ko" <%= languages =~ /^ko/i ? 'selected' : '' %>>한국어</option>
+                    </select>
+                </li>
+                <li>
+                    <a href="/admin/users" role="button" class="top-nav-btn secondary outline"><%= l('Manager') %></a>
+                </li>
+                <li>
+                    <a href="/admin/logout" role="button" class="top-nav-btn contrast outline"><%= l('Logout') %></a>
+                </li>
+                <li>
+                    <button class="top-nav-icon-btn secondary outline" onclick="toggleTheme()"
+                        title="<%= l('Toggle theme') %>" aria-label="<%= l('Toggle theme') %>">
+                        <span class="material-symbols-outlined" style="font-size: 1.05rem;" aria-hidden="true">dark_mode</span>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="main-container">
+        <%# Pagination Component %>
+        <% my $render_pager = begin %>
+            % my ($p_data, $base_query) = @_;
+            % if ($p_data && $p_data->{total_pages} > 1) {
+                <nav style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--pico-muted-border-color);">
+                    <small style="color: var(--pico-muted-color);">
+                        <%= l('Page [_1] of [_2] ([_3] total)', $p_data->{page}, $p_data->{total_pages}, $p_data->{total}) %>
+                    </small>
+                    <div style="display: flex; gap: 8px;">
+                        % if ($p_data->{has_prev}) {
+                            <a href="?<%= $base_query %>&page=<%= $p_data->{page} - 1 %>" role="button" class="secondary outline" style="padding: 3px 10px; font-size: 0.8rem;"><%= l('← Prev') %></a>
+                        % } else {
+                            <button class="secondary outline" disabled style="padding: 3px 10px; font-size: 0.8rem;"><%= l('← Prev') %></button>
+                        % }
+                        % if ($p_data->{has_next}) {
+                            <a href="?<%= $base_query %>&page=<%= $p_data->{page} + 1 %>" role="button" class="secondary outline" style="padding: 3px 10px; font-size: 0.8rem;"><%= l('Next →') %></a>
+                        % } else {
+                            <button class="secondary outline" disabled style="padding: 3px 10px; font-size: 0.8rem;"><%= l('Next →') %></button>
+                        % }
+                    </div>
+                </nav>
+            % }
+        <% end %>
+
+        % if (my $created = flash('created')) {
+        % my $full_sub_url = $c->build_share_url($created);
+        % my $cp_pwd = flash('created_pwd') // '';
+        % my $cp_note = flash('created_note') // '';
+        <article style="background: rgba(34, 197, 94, 0.12); border-left: 4px solid var(--pico-color-green-500); padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 4px; flex-wrap: wrap; gap: 10px;">
+            <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <span class="material-symbols-outlined" style="color: var(--pico-color-green-500);" aria-hidden="true">task_alt</span>
+                <strong><%= l('Share link is active:') %></strong>
+                <code id="new-share-url"><%= $full_sub_url %></code>
+                % if ($cp_pwd) {
+                <span style="display: inline-flex; align-items: center; gap: 4px; margin-left: 8px;">
+                    <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">key</span>
+                    <span><%= l('Passcode:') %></span>
+                    <code><%= $cp_pwd %></code>
+                </span>
+                % }
+                % if ($cp_note) {
+                <span style="color: var(--pico-muted-color);">(<%= $cp_note %>)</span>
+                % }
+            </div>
+            <div>
+                <button type="button" 
+                    data-url="<%= $full_sub_url %>" 
+                    data-pwd="<%= $cp_pwd %>" 
+                    data-note="<%= $cp_note %>" 
+                    onclick="copyShareInfo(this.dataset.url, this.dataset.pwd, this.dataset.note)"
+                    style="display: inline-flex; align-items: center; gap: 4px; width: auto !important; height: 28px !important; padding: 0 10px !important;">
+                    <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">content_copy</span>
+                    <span><%= l('Copy Info') %></span>
+                </button>
+                <a href="<%= $full_sub_url %>" target="_blank" role="button" class="secondary outline" style="text-decoration: none; display: inline-flex; align-items: center; width: auto !important; height: 28px !important; padding: 0 10px !important;"><%= l('Open ↗') %></a>
+            </div>
+        </article>
+        % }
+
+        % if (my $err = flash('err')) {
+        <article style="background: rgba(239, 68, 68, 0.12); border-left: 4px solid var(--pico-color-red-500); padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--pico-color-red-500);" aria-hidden="true">error</span>
+            <span><%= $err %></span>
+        </article>
+        % }
+
+        % if (my $msg = flash('msg')) {
+        <article style="background: rgba(34, 197, 94, 0.12); border-left: 4px solid var(--pico-color-green-500); padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-outlined" style="color: var(--pico-color-green-500);" aria-hidden="true">check_circle</span>
+            <span><%= $msg %></span>
+        </article>
+        % }
+
+        <!-- 2x2 Tab Navigation -->
+        <div class="tab-nav">
+            <a href="/admin?tab=files" class="<%= $tab eq 'files' ? 'active' : 'secondary outline' %>">
+                <span class="material-symbols-outlined" aria-hidden="true">folder</span>
+                <span><%= l('Files ([_1])', $count_files) %></span>
+            </a>
+            <a href="/admin?tab=actives" class="<%= $tab eq 'actives' ? 'active' : 'secondary outline' %>">
+                <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                <span><%= l('Active ([_1])', $count_actives) %></span>
+            </a>
+            <a href="/admin?tab=expired" class="<%= $tab eq 'expired' ? 'active' : 'secondary outline' %>">
+                <span class="material-symbols-outlined" aria-hidden="true">hourglass_empty</span>
+                <span><%= l('Expired ([_1])', $count_expired) %></span>
+            </a>
+            <a href="/admin?tab=trash" class="<%= $tab eq 'trash' ? 'active' : 'secondary outline' %>">
+                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                <span><%= l('Trash ([_1])', $count_trash) %></span>
+            </a>
+        </div>
+
+        <!-- ==================================================================
+             TAB 1: Files
+             ================================================================== -->
+        % if ($tab eq 'files') {
+        <div id="drop-zone" class="drop-zone">
+            <div id="drop-zone-prompt">
+                <p style="margin: 0 0 8px 0; font-size: 1.05rem; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size: 1.4rem; color: var(--pico-primary-background);" aria-hidden="true">cloud_upload</span>
+                    <strong><%= l('Drag & Drop files or folders here') %></strong>, <%= l('or') %>
+                    <a href="#" onclick="document.getElementById('file-input').click(); return false;"><%= l('browse files') %></a>
+                    /
+                    <a href="#" onclick="document.getElementById('folder-input').click(); return false;"><%= l('browse folder') %></a>
+                </p>
+                <label style="display: inline-flex; align-items: center; gap: 8px; margin: 0; cursor: pointer;">
+                    <input type="checkbox" id="auto-unzip-check" value="1" style="width: 16px; height: 16px; margin: 0; flex-shrink: 0;">
+                    <span style="font-size: 0.85rem;"><%= l('Auto-extract if .zip archive') %></span>
+                </label>
+            </div>
+            <div id="progress-container" class="upload-progress-container">
+                <progress id="upload-progress" value="0" max="100"></progress>
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--pico-muted-color);">
+                    <span id="upload-status"><%= l('Preparing...') %></span>
+                    <span id="upload-percent">0%</span>
+                </div>
+            </div>
+            <input type="file" id="file-input" multiple style="display: none;" onchange="handleSelectedFiles(this.files)">
+            <input type="file" id="folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSelectedFiles(this.files, true)">
+        </div>
+
+        <form method="POST" action="/admin/mkdir" style="margin-bottom: 25px; display: flex; gap: 10px; align-items: flex-end;">
+            %= csrf_field
+            <input type="hidden" name="base_path" value="<%= $cur_path %>">
+            <div style="flex: 1;">
+                <label style="margin-bottom: 4px; font-size: 0.85rem;"><%= $cur_path ? l('New Subfolder Name') : l('New Root Folder Name') %></label>
+                <input type="text" name="folder_name" placeholder="<%= l('alphanumeric') %>" required style="margin-bottom: 0;">
+            </div>
+            <button type="submit" class="secondary outline" style="width: auto; white-space: nowrap; margin-bottom: 0;"><%= l('Create Folder') %></button>
+        </form>
+
+        <article>
+            <header class="breadcrumb-nav" style="display: flex; align-items: center; gap: 6px;">
+                <a href="/admin?tab=files" style="display: inline-flex; align-items: center; gap: 4px; text-decoration: none;">
+                    <span class="material-symbols-outlined" style="font-size: 1.15rem;" aria-hidden="true">inventory_2</span>
+                    <span><%= l('repository') %></span>
+                </a>
+                % for my $bc (@$breadcrumbs) {
+                / <a href="/admin?tab=files&p=<%= $bc->{path} %>"><%= $bc->{name} %></a>
+                % }
+            </header>
+
+            <div class="flex-list-container">
+                <div class="flex-list-header grid-tab-files">
+                    <div><%= l('Name') %></div>
+                    <div><%= l('Size') %></div>
+                    <div><%= l('Modified') %></div>
+                    <div class="cell-right"><%= l('Actions') %></div>
+                </div>
+
+                % if ($cur_path) {
+                % my $parent = $cur_path =~ m{(.*)/[^/]+$} ? $1 : '';
+                <a href="/admin?tab=files&p=<%= $parent %>" class="flex-list-row" style="text-decoration: none; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-symbols-outlined" aria-hidden="true">folder_open</span>
+                    <strong><%= l('.. (Parent)') %></strong>
+                </a>
+                % }
+
+                % for my $item (@$items) {
+                <div class="flex-list-row grid-tab-files">
+                    <div class="mobile-header-row">
+                        <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto;">
+                            % if ($item->{is_dir}) {
+                                <span class="material-symbols-outlined" style="color: var(--pico-primary-background); flex-shrink: 0;" aria-hidden="true">folder</span>
+                                <span class="cell-truncate">
+                                    <a href="/admin?tab=files&p=<%= $item->{rel} %>"><strong><%= $item->{name} %></strong></a>
+                                </span>
+                            % } else {
+                                <span class="material-symbols-outlined" style="color: var(--pico-muted-color); flex-shrink: 0;" aria-hidden="true">description</span>
+                                <span class="cell-truncate"><%= $item->{name} %></span>
+                            % }
+                            % if ($item->{share_count} > 0) {
+                            <a href="/admin?tab=actives"
+                                title="<%= l('[_1] active', $item->{share_count}) %>"
+                                style="font-size: 0.7rem; text-decoration: none; padding: 1px 6px; border-radius: 3px; background: var(--pico-color-green-100); color: var(--pico-color-green-700); white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;">
+                                <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">link</span>
+                                <span><%= $item->{share_count} %></span>
+                            </a>
+                            % }
+                        </div>
+
+                        <!-- Mobile actions -->
+                        <div class="mobile-only">
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <button type="button" onclick="openShareDialog('<%= $item->{rel} %>')">
+                                            <span class="material-symbols-outlined" aria-hidden="true">share</span>
+                                            <span><%= l('Share') %></span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" onclick="openTransferDialog('<%= $item->{rel} %>', 'move')">
+                                            <span class="material-symbols-outlined" aria-hidden="true">drive_file_move</span>
+                                            <span><%= l('Move') %></span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" onclick="openTransferDialog('<%= $item->{rel} %>', 'copy')">
+                                            <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+                                            <span><%= l('Copy') %></span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" data-rel="<%= $item->{rel} %>" data-name="<%= $item->{name} %>" onclick="openRenameDialog(this.dataset.rel, this.dataset.name)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                                            <span><%= l('Rename') %></span>
+                                        </button>
+                                    </li>
+                                    <li class="divider" role="separator"></li>
+                                    <li>
+                                        <form method="POST" action="/admin/file/delete" style="margin: 0;" onsubmit="return confirm('<%= l('Delete this item permanently?') %>');">
+                                            %= csrf_field
+                                            <input type="hidden" name="target_rel" value="<%= $item->{rel} %>">
+                                            <input type="hidden" name="base_p" value="<%= $cur_path %>">
+                                            <button type="submit" class="destructive-btn" title="<%= l('Delete') %>">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                <span><%= l('Delete') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate"><small><%= $item->{size} %></small></div>
+                    <div class="desktop-only-cell cell-truncate"><small style="color: var(--pico-muted-color);"><%= $item->{mtime} %></small></div>
+
+                    <!-- Desktop actions -->
+                    <div class="cell-right desktop-only-cell">
+                        <div class="action-group">
+                            <button type="button" onclick="openShareDialog('<%= $item->{rel} %>')" class="action-btn" title="<%= l('Share') %>" aria-label="<%= l('Share') %>">
+                                <span class="material-symbols-outlined" aria-hidden="true">share</span>
+                            </button>
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <button type="button" onclick="openTransferDialog('<%= $item->{rel} %>', 'move')">
+                                            <span class="material-symbols-outlined" aria-hidden="true">drive_file_move</span>
+                                            <span><%= l('Move') %></span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" onclick="openTransferDialog('<%= $item->{rel} %>', 'copy')">
+                                            <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+                                            <span><%= l('Copy') %></span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button" data-rel="<%= $item->{rel} %>" data-name="<%= $item->{name} %>" onclick="openRenameDialog(this.dataset.rel, this.dataset.name)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                                            <span><%= l('Rename') %></span>
+                                        </button>
+                                    </li>
+                                    <li class="divider" role="separator"></li>
+                                    <li>
+                                        <form method="POST" action="/admin/file/delete" style="margin: 0;" onsubmit="return confirm('<%= l('Delete this item permanently?') %>');">
+                                            %= csrf_field
+                                            <input type="hidden" name="target_rel" value="<%= $item->{rel} %>">
+                                            <input type="hidden" name="base_p" value="<%= $cur_path %>">
+                                            <button type="submit" class="destructive-btn" title="<%= l('Delete') %>">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                <span><%= l('Delete') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Mobile metadata stream -->
+                    <div class="mobile-meta-sub">
+                        <span><span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">folder_zip</span><%= $item->{size} %></span>
+                        <span>•</span>
+                        <span><span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">schedule</span><%= $item->{mtime} %></span>
+                    </div>
+                </div>
+                % }
+                % unless (@$items) {
+                <div style="text-align: center; color: var(--pico-muted-color); padding: 36px 0;">
+                    <%= l('Empty directory') %>
+                </div>
+                % }
+            </div>
+            %= $render_pager->($pagination, "tab=files" . ($cur_path ? "&p=" . Mojo::Util::url_escape($cur_path) : ""))
+        </article>
+        % }
+
+        <!-- ==================================================================
+             TAB 2: Active Shares
+             ================================================================== -->
+        % if ($tab eq 'actives') {
+        <article>
+            <header style="display: flex; align-items: center; gap: 6px;">
+                <span class="material-symbols-outlined" style="color: var(--pico-color-green-500);" aria-hidden="true">check_circle</span>
+                <strong><%= l('Active Shares ([_1])', $count_actives) %></strong>
+            </header>
+
+            <div class="flex-list-container">
+                <div class="flex-list-header grid-tab-actives">
+                    <div><%= l('Cute Slug') %></div>
+                    <div><%= l('Target') %></div>
+                    <div><%= l('Auth') %></div>
+                    <div><%= l('TTL Remaining') %></div>
+                    <div><%= l('Views / Quota') %></div>
+                    <div class="cell-right"><%= l('Actions') %></div>
+                </div>
+
+                % for my $s (@$actives) {
+                % my $sub_url = $c->build_share_url($s->{slug});
+                % my $pwd = $s->{password} // '';
+                % my $note = $s->{note} // '';
+                <div class="flex-list-row grid-tab-actives">
+                    <div class="mobile-header-row">
+                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                            <span onclick="speakWord('<%= $s->{slug} %>')" title="<%= l('Pronounce') %>" style="cursor: pointer; display: inline-flex; align-items: center;">
+                                <span class="material-symbols-outlined" style="font-size: 1.1rem;" aria-hidden="true">volume_up</span>
+                            </span>
+                            <a href="<%= $sub_url %>" target="_blank" class="cell-truncate"><strong><%= $s->{slug} %></strong></a>
+                        </div>
+
+                        <!-- Mobile actions -->
+                        <div class="mobile-only">
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <button type="button"
+                                            data-url="<%= $sub_url %>" data-pwd="<%= $pwd %>" data-note="<%= $note %>"
+                                            onclick="copyShareInfo(this.dataset.url, this.dataset.pwd, this.dataset.note)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+                                            <span><%= l('Copy Info') %></span>
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button type="button"
+                                            data-slug="<%= $s->{slug} %>"
+                                            data-from="active"
+                                            data-target="<%= $s->{target} %>"
+                                            data-note="<%= $note %>"
+                                            data-ttl-val="<%= $s->{ttl_val} // 1 %>"
+                                            data-ttl-unit="<%= $s->{ttl_unit} // 'd' %>"
+                                            data-max-views="<%= $s->{max_views} // 0 %>"
+                                            onclick="openEditDialog(this)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+                                            <span><%= l('Edit') %></span>
+                                        </button>
+                                    </li>
+                                    <li class="divider" role="separator"></li>
+                                    <li>
+                                        <form method="POST" action="/admin/share/action" style="margin: 0;" onsubmit="return confirm('<%= l('Move this active share to trash?') %>');">
+                                            %= csrf_field
+                                            <input type="hidden" name="slug" value="<%= $s->{slug} %>">
+                                            <input type="hidden" name="from" value="active">
+                                            <button type="submit" name="action" value="trash" class="destructive-btn">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                <span><%= l('Trash') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate" style="display: flex; flex-direction: column; justify-content: center;">
+                        <small title="<%= $s->{target} %>" class="cell-truncate"><%= $s->{target} %></small>
+                        % if ($note) {
+                        <span class="note-badge" title="<%= $note %>">
+                            <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">chat_bubble_outline</span>
+                            <span><%= $note %></span>
+                        </span>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        % if ($pwd) {
+                        <span title="<%= l('Click to copy pwd') %>" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="copyToClipboard('<%= $pwd %>')">
+                            <span class="material-symbols-outlined" style="font-size: 0.95rem;" aria-hidden="true">key</span>
+                            <code><%= $pwd %></code>
+                        </span>
+                        % } else {
+                        <span style="color: var(--pico-muted-color);"><%= l('Public') %></span>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        % if ($s->{expires_at} == 0) {
+                        <span style="color: var(--pico-color-green-500);"><%= l('Never') %></span>
+                        % } else {
+                        <small><%= $c->format_ttl_remaining($s->{expires_at}) %></small>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        <span style="display: inline-flex; align-items: center; gap: 3px;">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">visibility</span>
+                            <strong><%= $s->{views} // 0 %></strong>
+                        </span>
+                        % if (my $mv = int($s->{max_views} // 0)) {
+                            <span style="font-size: 0.75rem; padding: 1px 6px; border-radius: 3px; background: var(--pico-color-amber-100); color: var(--pico-color-amber-700); margin-left: 4px;">
+                                <%= ($s->{claimed_views} // 0) . "/$mv" %>
+                            </span>
+                        % }
+                    </div>
+
+                    <div class="cell-right desktop-only-cell">
+                        <div class="action-group">
+                            <button type="button" class="action-btn"
+                                data-url="<%= $sub_url %>" data-pwd="<%= $pwd %>" data-note="<%= $note %>"
+                                onclick="copyShareInfo(this.dataset.url, this.dataset.pwd, this.dataset.note)"
+                                title="<%= l('Copy Info') %>" aria-label="<%= l('Copy Info') %>">
+                                <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
+                            </button>
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <button type="button"
+                                            data-slug="<%= $s->{slug} %>"
+                                            data-from="active"
+                                            data-target="<%= $s->{target} %>"
+                                            data-note="<%= $note %>"
+                                            data-ttl-val="<%= $s->{ttl_val} // 1 %>"
+                                            data-ttl-unit="<%= $s->{ttl_unit} // 'd' %>"
+                                            data-max-views="<%= $s->{max_views} // 0 %>"
+                                            onclick="openEditDialog(this)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+                                            <span><%= l('Edit') %></span>
+                                        </button>
+                                    </li>
+                                    <li class="divider" role="separator"></li>
+                                    <li>
+                                        <form method="POST" action="/admin/share/action" style="margin: 0;" onsubmit="return confirm('<%= l('Move this active share to trash?') %>');">
+                                            %= csrf_field
+                                            <input type="hidden" name="slug" value="<%= $s->{slug} %>">
+                                            <input type="hidden" name="from" value="active">
+                                            <button type="submit" name="action" value="trash" class="destructive-btn">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                <span><%= l('Trash') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Mobile metadata stream -->
+                    <div class="mobile-meta-sub">
+                        <span class="cell-truncate" style="max-width: 100%;">
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">folder</span>
+                            <%= $s->{target} %>
+                        </span>
+                        % if ($note) {
+                        <span class="note-badge" style="width: 100%;">
+                            <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">chat_bubble_outline</span>
+                            <span><%= $note %></span>
+                        </span>
+                        % }
+                    </div>
+                    <div class="mobile-meta-sub">
+                        % if ($pwd) {
+                        <span><span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">key</span><code><%= $pwd %></code></span>
+                        <span>•</span>
+                        % }
+                        <span>
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">timer</span>
+                            <%= $s->{expires_at} == 0 ? l('Never') : $c->format_ttl_remaining($s->{expires_at}) %>
+                        </span>
+                        <span>•</span>
+                        <span>
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">visibility</span>
+                            <%= $s->{views} // 0 %>
+                        </span>
+                    </div>
+                </div>
+                % }
+            </div>
+            %= $render_pager->($pagination, "tab=actives")
+        </article>
+        % }
+
+        <!-- ==================================================================
+             TAB 3: Expired Shares
+             ================================================================== -->
+        % if ($tab eq 'expired') {
+        <article>
+            <form id="expired-batch-form" method="POST" action="/admin/share/batch" style="margin: 0;"
+                onsubmit="return confirm('<%= l('Move selected expired shares to trash?') %>');">
+                %= csrf_field
+                <input type="hidden" name="action" value="trash_selected">
+
+                <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="material-symbols-outlined" aria-hidden="true">hourglass_empty</span>
+                        <strong><%= l('Expired Shares ([_1])', $count_expired) %></strong>
+                    </div>
+                    % if (@$expireds) {
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button type="submit" id="batch-trash-btn" class="secondary outline" disabled
+                            style="padding: 2px 8px; font-size: 0.75rem; margin: 0; width: auto; display: inline-flex; align-items: center; gap: 4px;">
+                            <span class="material-symbols-outlined" style="font-size: 0.95rem;" aria-hidden="true">delete</span>
+                            <span><%= l('Move Selected to Trash') %> (<span id="selected-count">0</span>)</span>
+                        </button>
+                    </div>
+                    % }
+                </header>
+            </form>
+
+            <div class="flex-list-container">
+                <div class="flex-list-header grid-tab-expired">
+                    <div style="text-align: center;">
+                        <input type="checkbox" id="select-all-expired" style="margin: 0; cursor: pointer;" onclick="toggleSelectAllExpired(this)">
+                    </div>
+                    <div><%= l('Cute Slug') %></div>
+                    <div><%= l('Target') %></div>
+                    <div><%= l('Auth') %></div>
+                    <div><%= l('Reason / Expired At') %></div>
+                    <div><%= l('Views / Quota') %></div>
+                    <div class="cell-right"><%= l('Actions') %></div>
+                </div>
+
+                % for my $s (@$expireds) {
+                % my $pwd = $s->{password} // '';
+                % my $note = $s->{note} // '';
+                % my $mv = int($s->{max_views} // 0);
+                % my $cv = int($s->{claimed_views} // 0);
+                <div class="flex-list-row grid-tab-expired">
+                    <div style="text-align: center;" class="desktop-only-cell">
+                        <input type="checkbox" name="slugs" value="<%= $s->{slug} %>" form="expired-batch-form" class="expired-item-check" style="margin: 0; cursor: pointer;" onchange="updateExpiredBatchCount()">
+                    </div>
+
+                    <div class="mobile-header-row">
+                        <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                            <input type="checkbox" name="slugs" value="<%= $s->{slug} %>" form="expired-batch-form" class="expired-item-check mobile-only" style="margin: 0; cursor: pointer;" onchange="updateExpiredBatchCount()">
+                            <del><strong><%= $s->{slug} %></strong></del>
+                        </div>
+
+                        <!-- Mobile actions -->
+                        <div class="mobile-only">
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <button type="button"
+                                            data-slug="<%= $s->{slug} %>"
+                                            data-from="expired"
+                                            data-target="<%= $s->{target} %>"
+                                            data-note="<%= $note %>"
+                                            data-ttl-val="<%= $s->{ttl_val} // 1 %>"
+                                            data-ttl-unit="<%= $s->{ttl_unit} // 'd' %>"
+                                            data-max-views="<%= $mv %>"
+                                            onclick="openEditDialog(this)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">replay</span>
+                                            <span><%= l('Renew & Edit') %></span>
+                                        </button>
+                                    </li>
+                                    <li class="divider" role="separator"></li>
+                                    <li>
+                                        <form method="POST" action="/admin/share/action" style="margin: 0;" onsubmit="return confirm('<%= l('Move share [_1] to trash?', $s->{slug}) %>');">
+                                            %= csrf_field
+                                            <input type="hidden" name="slug" value="<%= $s->{slug} %>">
+                                            <input type="hidden" name="from" value="expired">
+                                            <button type="submit" name="action" value="trash" class="destructive-btn">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                <span><%= l('To Trash') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate" style="display: flex; flex-direction: column; justify-content: center;">
+                        <small title="<%= $s->{target} %>" class="cell-truncate"><%= $s->{target} %></small>
+                        % if ($note) {
+                        <span class="note-badge" title="<%= $note %>">
+                            <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">chat_bubble_outline</span>
+                            <span><%= $note %></span>
+                        </span>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        % if ($pwd) {
+                        <span title="<%= l('Click to copy pwd') %>" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="copyToClipboard('<%= $pwd %>')">
+                            <span class="material-symbols-outlined" style="font-size: 0.95rem;" aria-hidden="true">key</span>
+                            <code><%= $pwd %></code>
+                        </span>
+                        % } else {
+                        <span style="color: var(--pico-muted-color);"><%= l('Public') %></span>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        % if ($mv > 0 && $cv >= $mv) {
+                        <span style="font-size: 0.75rem; padding: 1px 6px; border-radius: 3px; background: rgba(239, 68, 68, 0.12); color: var(--pico-color-red-500); display: inline-flex; align-items: center; gap: 3px;">
+                            <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">local_fire_department</span>
+                            <span><%= l('Quota Exhausted') %></span>
+                        </span>
+                        % } elsif ($s->{expires_at} > 0) {
+                        <small style="color: var(--pico-muted-color);"><%= $c->format_ttl_remaining($s->{expires_at}) %></small>
+                        % } else {
+                        <small style="color: var(--pico-muted-color);"><%= l('Revoked') %></small>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        <span style="display: inline-flex; align-items: center; gap: 3px;">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">visibility</span>
+                            <strong><%= $s->{views} // 0 %></strong>
+                        </span>
+                    </div>
+
+                    <div class="cell-right desktop-only-cell">
+                        <div class="action-group">
+                            <button type="button" class="action-btn"
+                                data-slug="<%= $s->{slug} %>"
+                                data-from="expired"
+                                data-target="<%= $s->{target} %>"
+                                data-note="<%= $note %>"
+                                data-ttl-val="<%= $s->{ttl_val} // 1 %>"
+                                data-ttl-unit="<%= $s->{ttl_unit} // 'd' %>"
+                                data-max-views="<%= $mv %>"
+                                onclick="openEditDialog(this)"
+                                title="<%= l('Renew & Edit') %>" aria-label="<%= l('Renew & Edit') %>">
+                                <span class="material-symbols-outlined" aria-hidden="true">replay</span>
+                            </button>
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <form method="POST" action="/admin/share/action" style="margin: 0;" onsubmit="return confirm('<%= l('Move share [_1] to trash?', $s->{slug}) %>');">
+                                            %= csrf_field
+                                            <input type="hidden" name="slug" value="<%= $s->{slug} %>">
+                                            <input type="hidden" name="from" value="expired">
+                                            <button type="submit" name="action" value="trash">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                <span><%= l('To Trash') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Mobile metadata stream -->
+                    <div class="mobile-meta-sub">
+                        <span class="cell-truncate" style="max-width: 100%;">
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">folder</span>
+                            <%= $s->{target} %>
+                        </span>
+                        % if ($note) {
+                        <span class="note-badge" style="width: 100%;">
+                            <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">chat_bubble_outline</span>
+                            <span><%= $note %></span>
+                        </span>
+                        % }
+                    </div>
+                    <div class="mobile-meta-sub">
+                        <span>
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">info</span>
+                            % if ($mv > 0 && $cv >= $mv) {
+                                <%= l('Quota Exhausted') %>
+                            % } elsif ($s->{expires_at} > 0) {
+                                <%= $c->format_ttl_remaining($s->{expires_at}) %>
+                            % } else {
+                                <%= l('Revoked') %>
+                            % }
+                        </span>
+                        <span>•</span>
+                        <span>
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">visibility</span>
+                            <%= $s->{views} // 0 %>
+                        </span>
+                    </div>
+                </div>
+                % }
+                % unless (@$expireds) {
+                <div style="text-align: center; color: var(--pico-muted-color); padding: 36px 0;">
+                    <%= l('No expired shares') %>
+                </div>
+                % }
+            </div>
+            %= $render_pager->($pagination, "tab=expired")
+        </article>
+        % }
+
+        <!-- ==================================================================
+             TAB 4: Trash
+             ================================================================== -->
+        % if ($tab eq 'trash') {
+        <article>
+            <header style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                    <strong><%= l('Trash ([_1])', $count_trash) %></strong>
+                </div>
+                % if (@$trashes) {
+                <form method="POST" action="/admin/share/batch" style="margin: 0;" onsubmit="return confirm('<%= l('WARNING: Permanently purge all items in trash? This cannot be undone.') %>');">
+                    %= csrf_field
+                    <input type="hidden" name="action" value="purge_all_trash">
+                    <button type="submit" class="contrast outline" style="padding: 2px 8px; font-size: 0.75rem; margin: 0; width: auto; display: inline-flex; align-items: center; gap: 4px;">
+                        <span class="material-symbols-outlined" style="font-size: 0.95rem; color: var(--pico-color-red-500);" aria-hidden="true">warning</span>
+                        <span><%= l('Empty Trash') %></span>
+                    </button>
+                </form>
+                % }
+            </header>
+
+            <div class="flex-list-container">
+                <div class="flex-list-header grid-tab-trash">
+                    <div><%= l('Cute Slug') %></div>
+                    <div><%= l('Target') %></div>
+                    <div><%= l('Auth') %></div>
+                    <div><%= l('Original Lifespan') %></div>
+                    <div><%= l('Views / Quota') %></div>
+                    <div class="cell-right"><%= l('Actions') %></div>
+                </div>
+
+                % for my $s (@$trashes) {
+                % my $pwd = $s->{password} // '';
+                % my $note = $s->{note} // '';
+                % my $mv = int($s->{max_views} // 0);
+                % my $cv = int($s->{claimed_views} // 0);
+                <div class="flex-list-row grid-tab-trash">
+                    <div class="mobile-header-row">
+                        <code><%= $s->{slug} %></code>
+
+                        <!-- Mobile actions -->
+                        <div class="mobile-only">
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <button type="button"
+                                            data-slug="<%= $s->{slug} %>"
+                                            data-from="trash"
+                                            data-target="<%= $s->{target} %>"
+                                            data-note="<%= $note %>"
+                                            data-ttl-val="<%= $s->{ttl_val} // 1 %>"
+                                            data-ttl-unit="<%= $s->{ttl_unit} // 'd' %>"
+                                            data-max-views="<%= $mv %>"
+                                            onclick="openEditDialog(this)">
+                                            <span class="material-symbols-outlined" aria-hidden="true">restore_from_trash</span>
+                                            <span><%= l('Restore') %></span>
+                                        </button>
+                                    </li>
+                                    <li class="divider" role="separator"></li>
+                                    <li>
+                                        <form method="POST" action="/admin/share/action" style="margin: 0;">
+                                            %= csrf_field
+                                            <input type="hidden" name="slug" value="<%= $s->{slug} %>">
+                                            <input type="hidden" name="from" value="trash">
+                                            <button type="submit" name="action" value="purge" class="destructive-btn" onclick="return confirm('<%= l('Purge this config permanently?') %>');">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete_forever</span>
+                                                <span><%= l('Purge') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate" style="display: flex; flex-direction: column; justify-content: center;">
+                        <small title="<%= $s->{target} %>" class="cell-truncate"><%= $s->{target} %></small>
+                        % if ($note) {
+                        <span class="note-badge" title="<%= $note %>">
+                            <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">chat_bubble_outline</span>
+                            <span><%= $note %></span>
+                        </span>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        % if ($pwd) {
+                        <span title="<%= l('Click to copy pwd') %>" style="cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" onclick="copyToClipboard('<%= $pwd %>')">
+                            <span class="material-symbols-outlined" style="font-size: 0.95rem;" aria-hidden="true">key</span>
+                            <code><%= $pwd %></code>
+                        </span>
+                        % } else {
+                        <span style="color: var(--pico-muted-color);"><%= l('Public') %></span>
+                        % }
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        <small style="color: var(--pico-muted-color);">
+                            % if (($s->{ttl_val} // 0) > 0) {
+                            <%= l('Config: [_1][_2]', $s->{ttl_val}, $s->{ttl_unit} // 'd') %>
+                            % } else {
+                            <%= l('Permanent') %>
+                            % }
+                        </small>
+                    </div>
+
+                    <div class="desktop-only-cell cell-truncate">
+                        <span style="display: inline-flex; align-items: center; gap: 3px;">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">visibility</span>
+                            <strong><%= $s->{views} // 0 %></strong>
+                        </span>
+                    </div>
+
+                    <div class="cell-right desktop-only-cell">
+                        <div class="action-group">
+                            <button type="button" class="action-btn"
+                                data-slug="<%= $s->{slug} %>"
+                                data-from="trash"
+                                data-target="<%= $s->{target} %>"
+                                data-note="<%= $note %>"
+                                data-ttl-val="<%= $s->{ttl_val} // 1 %>"
+                                data-ttl-unit="<%= $s->{ttl_unit} // 'd' %>"
+                                data-max-views="<%= $mv %>"
+                                onclick="openEditDialog(this)"
+                                title="<%= l('Restore') %>" aria-label="<%= l('Restore') %>">
+                                <span class="material-symbols-outlined" aria-hidden="true">restore_from_trash</span>
+                            </button>
+                            <details class="dropdown">
+                                <summary class="action-btn secondary outline" title="<%= l('Actions') %>" aria-label="<%= l('Actions') %>">
+                                    <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+                                </summary>
+                                <ul>
+                                    <li>
+                                        <form method="POST" action="/admin/share/action" style="margin: 0;">
+                                            %= csrf_field
+                                            <input type="hidden" name="slug" value="<%= $s->{slug} %>">
+                                            <input type="hidden" name="from" value="trash">
+                                            <button type="submit" name="action" value="purge" class="destructive-btn" onclick="return confirm('<%= l('Purge this config permanently?') %>');">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete_forever</span>
+                                                <span><%= l('Purge') %></span>
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+
+                    <!-- Mobile metadata stream -->
+                    <div class="mobile-meta-sub">
+                        <span class="cell-truncate" style="max-width: 100%;">
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">folder</span>
+                            <%= $s->{target} %>
+                        </span>
+                        % if ($note) {
+                        <span class="note-badge" style="width: 100%;">
+                            <span class="material-symbols-outlined" style="font-size: 0.85rem;" aria-hidden="true">chat_bubble_outline</span>
+                            <span><%= $note %></span>
+                        </span>
+                        % }
+                    </div>
+                    <div class="mobile-meta-sub">
+                        <span>
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">schedule</span>
+                            % if (($s->{ttl_val} // 0) > 0) {
+                                <%= l('Config: [_1][_2]', $s->{ttl_val}, $s->{ttl_unit} // 'd') %>
+                            % } else {
+                                <%= l('Permanent') %>
+                            % }
+                        </span>
+                        <span>•</span>
+                        <span>
+                            <span class="material-symbols-outlined" style="font-size: 0.9rem;" aria-hidden="true">visibility</span>
+                            <%= $s->{views} // 0 %>
+                        </span>
+                    </div>
+                </div>
+                % }
+                % unless (@$trashes) {
+                <div style="text-align: center; color: var(--pico-muted-color); padding: 36px 0;">
+                    <%= l('Trash is empty') %>
+                </div>
+                % }
+            </div>
+            %= $render_pager->($pagination, "tab=trash")
+        </article>
+        % }
+    </main>
+
+    % if ($footer_html) {
+    <footer style="max-width: 1280px; width: 95%; margin: 12px auto 20px; padding: 0; text-align: center; font-size: 0.8rem; line-height: 1.4; color: var(--pico-muted-color);">
+        <div style="margin: 0; padding: 0;"><%== $footer_html %></div>
+    </footer>
+    % }
+
+    <!-- ==================================================================
+         Dialog 1: Create Share
+         ================================================================== -->
+    <dialog id="share-modal">
+        <article>
+            <header>
+                <button aria-label="Close" rel="prev" onclick="document.getElementById('share-modal').close()"></button>
+                <p style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                    <span class="material-symbols-outlined" aria-hidden="true">link</span>
+                    <strong><%= l('New Share Link') %></strong>
+                </p>
+            </header>
+            <form method="POST" action="/admin/share">
+                %= csrf_field
+                <label><%= l('Target') %>
+                    <input type="text" id="modal-target" name="target_rel" readonly>
+                </label>
+                <label><%= l('Lifespan (0 = Permanent)') %></label>
+                <div class="ttl-group">
+                    <input type="number" name="ttl_val" value="1" min="0" required>
+                    <select name="ttl_unit">
+                        <option value="s"><%= l('Seconds') %></option>
+                        <option value="m"><%= l('Minutes') %></option>
+                        <option value="h"><%= l('Hours') %></option>
+                        <option value="d" selected><%= l('Days') %></option>
+                        <option value="w"><%= l('Weeks') %></option>
+                        <option value="M"><%= l('Months') %></option>
+                        <option value="y"><%= l('Years') %></option>
+                    </select>
+                </div>
+                <label><%= l('Max Access Slots (0 = Unlimited / No Burn)') %>
+                    <input type="number" name="max_views" value="0" min="0" placeholder="e.g. 100">
+                </label>
+                <label><%= l('Custom Cute Slug (Optional)') %>
+                    <input type="text" name="slug" placeholder="e.g. kunubepa">
+                </label>
+                <label><%= l('Access Password (Plain text, optional)') %></label>
+                <div class="input-with-btn">
+                    <input type="text" id="create-pwd" name="password" placeholder="<%= l('Leave empty for public access') %>">
+                    <button type="button" class="secondary" onclick="generateRandomPassword('create-pwd')" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">casino</span>
+                        <span><%= l('Gen') %></span>
+                    </button>
+                </div>
+                <label style="margin-top: 15px;"><%= l('Note (Shown on showcase page)') %>
+                    <input type="text" name="note" placeholder="<%= l('e.g. Project assets download') %>">
+                </label>
+                <footer>
+                    <button type="button" class="secondary" onclick="document.getElementById('share-modal').close()"><%= l('Cancel') %></button>
+                    <button type="submit"><%= l('Create') %></button>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+
+    <!-- ==================================================================
+         Dialog 2: Edit/Renew Share
+         ================================================================== -->
+    <dialog id="edit-modal">
+        <article>
+            <header>
+                <button aria-label="Close" rel="prev" onclick="document.getElementById('edit-modal').close()"></button>
+                <p style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                    <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+                    <strong><%= l('Edit / Restore Share') %></strong>
+                </p>
+            </header>
+            <form method="POST" action="/admin/share/update">
+                %= csrf_field
+                <input type="hidden" id="edit-from" name="from">
+                <label><%= l('Cute Slug') %>
+                    <input type="text" id="edit-slug" name="slug" readonly>
+                </label>
+                <label><%= l('Target (Change file or directory to switch version)') %>
+                    <input type="text" id="edit-target" name="target" list="target-suggestions" autocomplete="off"
+                        placeholder="<%= l('Type to search paths...') %>" required oninput="fetchPathSuggestions(this.value)">
+                    <datalist id="target-suggestions"></datalist>
+                </label>
+                <label><%= l('New Lifespan (0 = Permanent)') %></label>
+                <div class="ttl-group">
+                    <input type="number" id="edit-ttl-val" name="ttl_val" min="0" required>
+                    <select id="edit-ttl-unit" name="ttl_unit">
+                        <option value="s"><%= l('Seconds') %></option>
+                        <option value="m"><%= l('Minutes') %></option>
+                        <option value="h"><%= l('Hours') %></option>
+                        <option value="d"><%= l('Days') %></option>
+                        <option value="w"><%= l('Weeks') %></option>
+                        <option value="M"><%= l('Months') %></option>
+                        <option value="y"><%= l('Years') %></option>
+                    </select>
+                </div>
+                <label><%= l('Max Access Slots (0 = Unlimited)') %>
+                    <input type="number" id="edit-max-views" name="max_views" min="0" placeholder="0">
+                </label>
+                <label><%= l('Password (Leave empty to keep, type __CLEAR__ to remove)') %></label>
+                <div class="input-with-btn">
+                    <input type="text" id="edit-pwd" name="password" placeholder="<%= l('Leave empty to keep intact') %>">
+                    <button type="button" class="secondary" onclick="generateRandomPassword('edit-pwd')" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">casino</span>
+                        <span><%= l('Gen') %></span>
+                    </button>
+                </div>
+                <label style="margin-top: 15px;"><%= l('Note') %>
+                    <input type="text" id="edit-note" name="note">
+                </label>
+                <footer>
+                    <button type="button" class="secondary" onclick="document.getElementById('edit-modal').close()"><%= l('Cancel') %></button>
+                    <button type="submit"><%= l('Save & Activate') %></button>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+
+    <!-- ==================================================================
+         Dialog 3: Rename
+         ================================================================== -->
+    <dialog id="rename-modal">
+        <article>
+            <header>
+                <button aria-label="Close" rel="prev" onclick="document.getElementById('rename-modal').close()"></button>
+                <p style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                    <strong><%= l('Rename') %></strong>
+                </p>
+            </header>
+            <form method="POST" action="/admin/file/rename">
+                %= csrf_field
+                <input type="hidden" id="rename-target" name="target_rel">
+                <input type="hidden" name="base_p" value="<%= $cur_path %>">
+                <label><%= l('New Name') %>
+                    <input type="text" id="rename-input" name="new_name" required>
+                </label>
+                <footer>
+                    <button type="button" class="secondary" onclick="document.getElementById('rename-modal').close()"><%= l('Cancel') %></button>
+                    <button type="submit"><%= l('Confirm') %></button>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+
+    <!-- ==================================================================
+         Dialog 4: Move / Copy Resource
+         ================================================================== -->
+    <dialog id="transfer-modal">
+        <article>
+            <header>
+                <button aria-label="Close" rel="prev" onclick="document.getElementById('transfer-modal').close()"></button>
+                <p style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                    <span id="transfer-modal-icon" class="material-symbols-outlined" aria-hidden="true">drive_file_move</span>
+                    <strong id="transfer-modal-title"><%= l('Move Resource') %></strong>
+                </p>
+            </header>
+            <form id="transfer-form" method="POST" action="/admin/file/move">
+                %= csrf_field
+                <input type="hidden" id="transfer-target" name="target_rel">
+                <input type="hidden" name="base_p" value="<%= $cur_path %>">
+                
+                <label><%= l('Destination Directory (Empty for root level)') %>
+                    <input type="text" id="transfer-dest" name="dest_dir" list="dest-suggestions" 
+                        autocomplete="off" placeholder="<%= l('Type to search folders...') %>" 
+                        oninput="fetchFolderSuggestions(this.value)">
+                    <datalist id="dest-suggestions"></datalist>
+                </label>
+
+                <footer>
+                    <button type="button" class="secondary" onclick="document.getElementById('transfer-modal').close()"><%= l('Cancel') %></button>
+                    <button type="submit" id="transfer-submit-btn"><%= l('Confirm Move') %></button>
+                </footer>
+            </form>
+        </article>
+    </dialog>
+
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <script>
+        const I18N = {
+            copiedLink: "<%= l('Copied link: [_1]', '') %>",
+            copyManually: "<%= l('Copy manually:') %>",
+            uploading: "<%= l('Uploading [_1] file(s)... ([_2]%)', '{count}', '{percent}') %>",
+            uploadFailed: "<%= l('Upload failed: ') %>",
+            networkError: "<%= l('Network error occurred during upload.') %>",
+            moveTitle: "<%= l('Move Resource') %>",
+            copyTitle: "<%= l('Copy Resource') %>",
+            confirmMove: "<%= l('Confirm Move') %>",
+            confirmCopy: "<%= l('Confirm Copy') %>",
+            rootDir: "/ (<%= l('Root directory') %>)"
+        };
+
+        function openShareDialog(targetPath) {
+            document.getElementById('modal-target').value = targetPath;
+            document.getElementById('create-pwd').value = '';
+            document.getElementById('share-modal').showModal();
+        }
+
+        function openRenameDialog(targetPath, oldName) {
+            document.getElementById('rename-target').value = targetPath;
+            document.getElementById('rename-input').value = oldName;
+            document.getElementById('rename-modal').showModal();
+        }
+
+        function openEditDialog(btn) {
+            const d = btn.dataset;
+            document.getElementById('edit-slug').value = d.slug;
+            document.getElementById('edit-from').value = d.from;
+            document.getElementById('edit-target').value = d.target;
+            fetchPathSuggestions(d.target);
+            document.getElementById('edit-note').value = d.note || '';
+            document.getElementById('edit-pwd').value = '';
+            document.getElementById('edit-ttl-val').value = d.ttlVal || 1;
+            document.getElementById('edit-ttl-unit').value = d.ttlUnit || 'd';
+            document.getElementById('edit-max-views').value = d.maxViews || 0;
+            document.getElementById('edit-modal').showModal();
+        }
+
+        function generateRandomPassword(elementId) {
+            const chars = '23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ';
+            let pwd = '';
+            for (let i = 0; i < 6; i++) {
+                pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById(elementId).value = pwd;
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast-item toast-${type}`;
+
+            let iconName = 'info';
+            if (type === 'success') iconName = 'check_circle';
+            if (type === 'error') iconName = 'error';
+
+            toast.innerHTML = `<span class="material-symbols-outlined" aria-hidden="true">${iconName}</span><span>${message}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add('toast-show');
+            });
+
+            setTimeout(() => {
+                toast.classList.remove('toast-show');
+                toast.addEventListener('transitionend', () => {
+                    toast.remove();
+                }, { once: true });
+            }, 2500);
+        }
+
+        function copyToClipboard(text) {
+            const successMsg = I18N.copiedLink ? (I18N.copiedLink + text) : text;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(successMsg, 'success');
+                }).catch(() => {
+                    prompt(I18N.copyManually, text);
+                });
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast(successMsg, 'success');
+                } catch (err) {
+                    prompt(I18N.copyManually, text);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function copyShareInfo(url, pwd, note) {
+            let fullUrl = url;
+            let hashParts = [];
+            if (pwd && pwd.trim() !== '') {
+                hashParts.push('pwd=' + encodeURIComponent(pwd.trim()));
+            }
+            if (note && note.trim() !== '') {
+                const safeNote = note.trim()
+                    .replace(/%/g, '%25')
+                    .replace(/&/g, '%26')
+                    .replace(/=/g, '%3D')
+                    .replace(/#/g, '%23');
+                hashParts.push('note=' + safeNote);
+            }
+            if (hashParts.length > 0) {
+                fullUrl += (fullUrl.includes('#') ? '&' : '#') + hashParts.join('&');
+            }
+            copyToClipboard(fullUrl);
+        }
+
+        const dropZone = document.getElementById('drop-zone');
+        const curPath = "<%= $cur_path %>";
+
+        if (dropZone) {
+            ['dragenter', 'dragover'].forEach(name => {
+                dropZone.addEventListener(name, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(name => {
+                dropZone.addEventListener(name, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('dragover');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', async (e) => {
+                const items = e.dataTransfer.items;
+                if (!items || items.length === 0) return;
+
+                let queue = [];
+                for (let i = 0; i < items.length; i++) {
+                    const entry = items[i].webkitGetAsEntry ? items[i].webkitGetAsEntry() : null;
+                    if (entry) {
+                        await traverseEntry(entry, '', queue);
+                    }
+                }
+                if (queue.length > 0) uploadQueue(queue);
+            });
+        }
+
+        async function readAllDirectoryEntries(dirReader) {
+            let entries = [];
+            let readEntries = async () => {
+                let result = await new Promise((resolve, reject) => {
+                    dirReader.readEntries(resolve, reject);
+                });
+                if (result.length > 0) {
+                    entries.push(...result);
+                    await readEntries();
+                }
+            };
+            await readEntries();
+            return entries;
+        }
+
+        async function traverseEntry(entry, pathSoFar, queue) {
+            const currentPath = pathSoFar ? (pathSoFar + '/' + entry.name) : entry.name;
+            if (entry.isFile) {
+                const file = await new Promise(resolve => entry.file(resolve));
+                queue.push({ file: file, relPath: currentPath });
+            } else if (entry.isDirectory) {
+                const dirReader = entry.createReader();
+                const entries = await readAllDirectoryEntries(dirReader);
+                for (const child of entries) {
+                    await traverseEntry(child, currentPath, queue);
+                }
+            }
+        }
+
+        function handleSelectedFiles(files, isFolder = false) {
+            let queue = [];
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const relPath = isFolder ? (file.webkitRelativePath || file.name) : file.name;
+                queue.push({ file: file, relPath: relPath });
+            }
+            if (queue.length > 0) uploadQueue(queue);
+        }
+
+        function uploadQueue(queue) {
+            const formData = new FormData();
+            formData.append('target_dir', curPath);
+            formData.append('auto_unzip', document.getElementById('auto-unzip-check').checked ? '1' : '0');
+
+            const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            if (tokenMeta) {
+                formData.append('csrf_token', tokenMeta.getAttribute('content'));
+            }
+
+            queue.forEach(item => {
+                formData.append('files', item.file, item.file.name);
+                formData.append('rel_paths', item.relPath);
+            });
+
+            const promptDiv = document.getElementById('drop-zone-prompt');
+            const progressDiv = document.getElementById('progress-container');
+            const progressBar = document.getElementById('upload-progress');
+            const statusText = document.getElementById('upload-status');
+            const percentText = document.getElementById('upload-percent');
+
+            promptDiv.style.display = 'none';
+            progressDiv.style.display = 'block';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/admin/upload', true);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progressBar.value = percent;
+                    percentText.innerText = percent + '%';
+                    statusText.innerText = I18N.uploading.replace('{count}', queue.length).replace('{percent}', percent);
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200 || xhr.status === 302) {
+                    window.location.reload();
+                } else {
+                    showToast(I18N.uploadFailed + xhr.statusText, 'error');
+                    promptDiv.style.display = 'block';
+                    progressDiv.style.display = 'none';
+                }
+            };
+
+            xhr.onerror = () => {
+                showToast(I18N.networkError, 'error');
+                promptDiv.style.display = 'block';
+                progressDiv.style.display = 'none';
+            };
+
+            xhr.send(formData);
+        }
+
+        let debounceTimer = null;
+        function fetchPathSuggestions(query) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetch('/admin/api/paths?q=' + encodeURIComponent(query))
+                    .then(res => res.json())
+                    .then(items => {
+                        const datalist = document.getElementById('target-suggestions');
+                        datalist.innerHTML = '';
+                        items.forEach(item => {
+                            const option = document.createElement('option');
+                            option.value = item.val;
+                            option.label = item.label;
+                            datalist.appendChild(option);
+                        });
+                    })
+                    .catch(err => console.error('Error fetching paths:', err));
+            }, 150);
+        }
+
+        function toggleTheme() {
+            let current = document.documentElement.getAttribute('data-theme');
+            if (!current) {
+                current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', target);
+            try {
+                localStorage.setItem('pico_theme', target);
+            } catch (e) {}
+        }
+
+        function openTransferDialog(targetRel, mode) {
+            document.getElementById('transfer-target').value = targetRel;
+            document.getElementById('transfer-dest').value = '';
+
+            const isMove = mode === 'move';
+            document.getElementById('transfer-form').action = isMove ? '/admin/file/move' : '/admin/file/copy';
+            document.getElementById('transfer-modal-icon').innerText = isMove ? 'drive_file_move' : 'content_copy';
+            document.getElementById('transfer-modal-title').innerText = isMove ? I18N.moveTitle : I18N.copyTitle;
+            document.getElementById('transfer-submit-btn').innerText = isMove ? I18N.confirmMove : I18N.confirmCopy;
+
+            fetchFolderSuggestions('');
+            document.getElementById('transfer-modal').showModal();
+        }
+
+        function fetchFolderSuggestions(query) {
+            fetch('/admin/api/paths?q=' + encodeURIComponent(query))
+                .then(res => res.json())
+                .then(items => {
+                    const datalist = document.getElementById('dest-suggestions');
+                    datalist.innerHTML = `<option value="">${I18N.rootDir}</option>`;
+                    items.filter(item => item.val.endsWith('/')).forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item.val.replace(/\/$/, '');
+                        opt.label = item.label;
+                        datalist.appendChild(opt);
+                    });
+                })
+                .catch(err => console.error('Error fetching directories:', err));
+        }
+
+        function toggleSelectAllExpired(master) {
+            const checkboxes = document.querySelectorAll('.expired-item-check');
+            checkboxes.forEach(cb => cb.checked = master.checked);
+            updateExpiredBatchCount();
+        }
+
+        function updateExpiredBatchCount() {
+            const checked = document.querySelectorAll('.expired-item-check:checked');
+            const total = document.querySelectorAll('.expired-item-check');
+            const master = document.getElementById('select-all-expired');
+            const countSpan = document.getElementById('selected-count');
+            const btn = document.getElementById('batch-trash-btn');
+
+            if (countSpan) countSpan.innerText = checked.length;
+            if (btn) btn.disabled = checked.length === 0;
+
+            if (master && total.length > 0) {
+                master.checked = checked.length === total.length;
+                master.indeterminate = checked.length > 0 && checked.length < total.length;
+            }
+        }
+
+        function speakWord(text) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.85;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        document.addEventListener('click', (e) => {
+            const openDropdowns = document.querySelectorAll('details.dropdown[open]');
+            openDropdowns.forEach(dropdown => {
+                if (!dropdown.contains(e.target)) {
+                    dropdown.removeAttribute('open');
+                }
+            });
+        });
+    </script>
+
+    % if ($custom_js) {
+        % if ($custom_js =~ m{^https?://} or $custom_js =~ m{^/}) {
+            <script src="<%= $custom_js %>" defer></script>
+        % } else {
+            <script><%== $custom_js %></script>
+        % }
+    % }
+</body>
+
+</html>

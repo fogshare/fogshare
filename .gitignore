@@ -1,0 +1,31 @@
+#
+# Fogshare - Git Ignore Rules
+#
+# Copyright (c) 2026 Fogshare Contributors
+# Licensed under the MIT License.
+#
+
+# Persistent runtime data and local vendor dependencies
+data/
+local/
+.worker.lock
+*.lock
+
+# Sensitive local configurations and credentials
+fogshare.json
+passwd.json
+
+# Temporary buffers, log outputs, and deployment archives
+*.tmp
+*.zip
+*.tar.gz
+*.log
+fogshare_*.zip
+
+# Operating system metadata and editor artifacts
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/

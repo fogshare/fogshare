@@ -1,0 +1,281 @@
+#!/usr/bin/env perl
+#
+# Fogshare - Command-Line Interface (CLI) Deployment Tool
+#
+# Copyright (c) 2026 Fogshare Contributors
+# Licensed under the MIT License.
+#
+
+use strict;
+use warnings;
+use open ':std', ':encoding(UTF-8)';
+use Getopt::Long qw(GetOptions);
+use File::Temp   qw(tempfile);
+use File::Spec;
+use FindBin;
+use Cwd          qw(abs_path getcwd);
+use JSON::PP     qw(decode_json);
+use Encode       qw(decode_utf8 encode_utf8);
+use Archive::Zip qw(:ERROR_CODES :CONSTANTS);
+
+# -----------------------------------------------------------------------------
+# Configuration Discovery
+# -----------------------------------------------------------------------------
+
+# Discover configuration from user home, script directory, or working directory
+my $local_cfg = {};
+for my $cfg_path ("$ENV{HOME}/.fogshare.json", "$FindBin::Bin/fogshare.json", "./fogshare.json") {
+    if (-f $cfg_path) {
+        $local_cfg = eval {
+            open my $fh, '<:raw', $cfg_path or die $!;
+            local $/;
+            decode_json(<$fh>);
+        } || {};
+        last if keys %$local_cfg;
+    }
+}
+
+# Resolve and normalize remote API endpoint URL
+my $ENDPOINT = $ENV{FOGSHARE_HOST}
+    || $local_cfg->{api_endpoint}
+    || ($local_cfg->{admin_domain} ? $local_cfg->{admin_domain} : '')
+    || 'admin.localhost:3642';
+
+my $proto;
+if ($ENDPOINT =~ s{^(https?)://}{}i) {
+    $proto = lc($1);
+}
+$ENDPOINT =~ s{/+$}{};
+
+my ($host_part, $port_part) = ($ENDPOINT =~ m{^([^:]+)(?::(\d+))?$});
+$host_part //= $ENDPOINT;
+
+# Infer appropriate transport protocol when omitted
+unless ($proto) {
+    if (defined $port_part && $port_part == 443) {
+        $proto = 'https';
+    } elsif (defined $port_part && $port_part == 80) {
+        $proto = 'http';
+    } elsif ($host_part =~ /^(?:127\.0\.0\.1|localhost|\[::1\])$/i || $host_part =~ /\.localhost$/i) {
+        $proto = 'http';
+    } else {
+        $proto = 'https';
+    }
+}
+
+my $final_port = '';
+if (defined $port_part && length $port_part) {
+    unless (($proto eq 'http' && $port_part == 80) || ($proto eq 'https' && $port_part == 443)) {
+        $final_port = ":$port_part";
+    }
+}
+
+$ENDPOINT = "$proto://$host_part$final_port";
+
+# -----------------------------------------------------------------------------
+# CLI Options Parsing
+# -----------------------------------------------------------------------------
+
+my ($opt_list, $opt_teardown, $opt_slug, $opt_pwd, $opt_note, $opt_ttl, $opt_views, $opt_token, $opt_unzip, $opt_help);
+
+GetOptions(
+    'list|l'       => \$opt_list,
+    'teardown|d=s' => \$opt_teardown,
+    'slug|s=s'     => \$opt_slug,
+    'pwd|p=s'      => \$opt_pwd,
+    'note|n=s'     => \$opt_note,
+    'ttl|t=s'      => \$opt_ttl,
+    'views|v=i'    => \$opt_views,
+    'token=s'      => \$opt_token,
+    'unzip'        => \$opt_unzip,
+    'help|h'       => \$opt_help,
+) or exit 1;
+
+if ($opt_help) {
+    print <<"EOF";
+Fogshare CLI Client (Perl + curl)
+
+Usage:
+  fogshare <path> [options]           Deploy a directory or file
+  fogshare --list                     List all active deployments
+  fogshare --teardown <slug>          Tear down an active deployment
+
+Options:
+  -s, --slug <slug>        Custom cute slug (e.g. my-app)
+  -p, --pwd <passcode>     Set access passcode
+  -n, --note <text>        Note / showcase description
+  -t, --ttl <val><unit>    Lifespan (e.g. 7d, 24h, 30m, 0=permanent)
+  -v, --views <count>      Max access slots / Burn after views (0=unlimited)
+      --unzip              Extract archive on server (auto for directories)
+      --token <token>      API authentication token
+  -h, --help               Show this help message
+
+Environment:
+  FOGSHARE_HOST            Target server endpoint (e.g. http://admin.localhost:3642)
+  FOGSHARE_TOKEN           API authentication token
+EOF
+    exit 0;
+}
+
+my $TOKEN = $opt_token || $ENV{FOGSHARE_TOKEN} || $local_cfg->{api_token};
+die "Error: API token must be specified via --token, FOGSHARE_TOKEN, or fogshare.json\n" unless $TOKEN;
+
+# -----------------------------------------------------------------------------
+# Action: List Active Deployments
+# -----------------------------------------------------------------------------
+
+if ($opt_list) {
+    print "Fetching active deployments from $ENDPOINT...\n";
+    my @cmd = ('curl', '-s', '-S', '-L', '-H', "X-API-Token: $TOKEN", "$ENDPOINT/api/shares");
+    my $raw = capture_exec(@cmd);
+    my $res = safe_decode_json($raw);
+
+    if ($@ || !$res || (ref $res eq 'HASH' && $res->{error})) {
+        die "Request failed: " . ((ref $res eq 'HASH' && $res->{error}) ? $res->{error} : $raw) . "\n";
+    }
+
+    my $shares = $res->{shares} || [];
+    if (!@$shares) {
+        print "No active deployments found.\n";
+        exit 0;
+    }
+
+    printf "%-18s %-8s %-12s %-25s %s\n", 'SLUG', 'AUTH', 'SLOTS', 'TARGET', 'NOTE';
+    print '-' x 78 . "\n";
+    for my $s (@$shares) {
+        my $auth  = $s->{has_password} ? 'YES' : 'PUBLIC';
+        my $slots = $s->{max_views}    ? "$s->{claimed_views}/$s->{max_views}" : 'UNLIMITED';
+        printf "%-18s %-8s %-12s %-25s %s\n", $s->{slug}, $auth, $slots, $s->{target}, ($s->{note} // '');
+    }
+    exit 0;
+}
+
+# -----------------------------------------------------------------------------
+# Action: Teardown Deployment
+# -----------------------------------------------------------------------------
+
+if (defined $opt_teardown) {
+    die "Error: Slug is required for teardown.\n" unless length $opt_teardown;
+    print "Tearing down deployment [$opt_teardown]...\n";
+
+    my @cmd = ('curl', '-s', '-S', '-L', '-X', 'POST', '-H', "X-API-Token: $TOKEN", '-F', "slug=$opt_teardown", "$ENDPOINT/api/teardown");
+    my $raw = capture_exec(@cmd);
+    my $res = safe_decode_json($raw);
+
+    if ($res && $res->{status} eq 'ok') {
+        print "Success: " . ($res->{message} // 'Done') . "\n";
+    } else {
+        die "Teardown failed: " . ($res ? $res->{error} : $raw) . "\n";
+    }
+    exit 0;
+}
+
+# -----------------------------------------------------------------------------
+# Action: Package and Deploy Target
+# -----------------------------------------------------------------------------
+
+my $target = shift @ARGV;
+die "Error: Missing target file or directory. See --help.\n" unless defined $target;
+die "Error: Target [$target] does not exist.\n"              unless -e $target;
+
+# Parse TTL parameter with fallback default (1 day)
+my ($ttl_val, $ttl_unit) = (1, 'd');
+if ($opt_ttl) {
+    if ($opt_ttl =~ /^(\d+)([a-zA-Z]+)$/) {
+        ($ttl_val, $ttl_unit) = ($1, $2);
+    } elsif ($opt_ttl =~ /^(\d+)$/) {
+        ($ttl_val, $ttl_unit) = ($1, 'd');
+    }
+}
+
+my $tmp_zip;
+END { unlink $tmp_zip if $tmp_zip && -f $tmp_zip; }
+my $upload_path = abs_path($target);
+
+my $should_unzip = 0;
+
+# Archive directory into zip while pruning OS-specific metadata and symlinks
+if (-d $upload_path) {
+    print "Packaging directory [$target]...\n";
+    (undef, $tmp_zip) = tempfile('fogshare_XXXXXX', SUFFIX => '.zip', TMPDIR => 1);
+    unlink $tmp_zip if -f $tmp_zip;
+
+    my $zip = Archive::Zip->new();
+    $zip->addTree($upload_path, '');
+
+    for my $member ($zip->members) {
+        if ($member->isSymbolicLink) {
+            $zip->removeMember($member);
+            next;
+        }
+        my $m_name = $member->fileName;
+        if ($m_name =~ m{(?:^|/)(?:\.DS_Store|\.git|__MACOSX)}) {
+            $zip->removeMember($member);
+        }
+    }
+
+    unless ($zip->writeToFileNamed($tmp_zip) == AZ_OK) {
+        die "Failed to create archive using Archive::Zip.\n";
+    }
+
+    $upload_path  = $tmp_zip;
+    $should_unzip = 1;
+} elsif (-f $upload_path && $opt_unzip) {
+    $should_unzip = 1;
+}
+
+print "Deploying to $ENDPOINT...\n";
+
+my @curl_cmd = (
+    'curl', '-s', '-S', '-L',
+    '-H', "X-API-Token: $TOKEN",
+    '-F', "file=\@$upload_path",
+    '-F', "unzip=$should_unzip",
+    '-F', "ttl_val=$ttl_val",
+    '-F', "ttl_unit=$ttl_unit",
+);
+
+push @curl_cmd, ('-F', "slug=$opt_slug")       if defined $opt_slug;
+push @curl_cmd, ('-F', "password=$opt_pwd")    if defined $opt_pwd;
+push @curl_cmd, ('-F', "note=$opt_note")       if defined $opt_note;
+push @curl_cmd, ('-F', "max_views=$opt_views") if defined $opt_views;
+push @curl_cmd, "$ENDPOINT/api/deploy";
+
+my $raw_res = capture_exec(@curl_cmd);
+unlink $tmp_zip if $tmp_zip && -f $tmp_zip;
+
+my $res = safe_decode_json($raw_res);
+if (!$res || $res->{error}) {
+    die "Deployment failed: " . ($res ? $res->{error} : $raw_res) . "\n";
+}
+
+# Print formatted deployment result
+print "\nSuccess! Deployed to:\n";
+print "URL:       " . $res->{url} . "\n";
+print "Fallback:  " . $res->{fallback_url} . "\n";
+print "Passcode:  Protected\n" if $res->{has_password};
+print "Slots:     " . ($res->{max_views} ? "$res->{max_views} access slots" : "Unlimited") . "\n";
+
+# -----------------------------------------------------------------------------
+# Utility Functions
+# -----------------------------------------------------------------------------
+
+# Capture command output over binary pipe
+sub capture_exec {
+    my @cmd = @_;
+    open my $pipe, '-|:raw', @cmd or die "Failed to execute curl: $!\n";
+    local $/;
+    my $out = <$pipe>;
+    close $pipe;
+    return $out;
+}
+
+# Safely decode raw or multi-byte UTF-8 JSON payloads
+sub safe_decode_json {
+    my ($raw_bytes) = @_;
+    return {} unless defined $raw_bytes && length $raw_bytes;
+
+    return eval { decode_json($raw_bytes) }
+        // eval { decode_json(Encode::encode_utf8(Encode::decode_utf8($raw_bytes))) }
+        // undef;
+}

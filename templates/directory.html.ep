@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<!--
+  Fogshare - Directory Index Showcase Template
+  Copyright (c) 2026 Fogshare Contributors
+  Licensed under the MIT License.
+-->
+<html lang="<%= languages %>">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title><%= $meta->{note} ? "$meta->{note} - $site_name" : l('Directory Index') . " - $site_name" %></title>
+    <link rel="icon" href="<%= $favicon_url // '/favicon.ico' %>">
+
+    <script>
+        (function () {
+            const saved = localStorage.getItem('pico_theme') || 'auto';
+            if (saved !== 'auto') {
+                document.documentElement.setAttribute('data-theme', saved);
+            }
+        })();
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+    % if ($custom_css) {
+        % if ($custom_css =~ m{^https?://} || $custom_css =~ m{^/}) {
+            <link rel="stylesheet" href="<%= $custom_css %>">
+        % } else {
+            <style><%== $custom_css %></style>
+        % }
+    % }
+
+    <style>
+        :root {
+            --pico-font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+        }
+
+        body {
+            font-family: var(--pico-font-family);
+        }
+
+        .main-container {
+            width: 95%;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding-top: 25px;
+        }
+
+        main.main-container > article:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Material Symbols baseline align */
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 1.25rem;
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            vertical-align: middle;
+            user-select: none;
+            flex-shrink: 0;
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Fixed toolbar component sizing */
+        .header-btn {
+            box-sizing: border-box !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            height: 32px !important;
+            padding: 0 12px !important;
+            margin: 0 !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+            gap: 6px !important;
+            white-space: nowrap !important;
+        }
+
+        .header-icon-btn {
+            box-sizing: border-box !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 32px !important;
+            min-width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+        }
+
+        .lang-select {
+            box-sizing: border-box !important;
+            width: auto !important;
+            height: 32px !important;
+            min-height: 32px !important;
+            max-height: 32px !important;
+            margin: 0 !important;
+            padding: 0 24px 0 10px !important;
+            font-size: 0.8rem !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+
+        /* Flex-based file listing container */
+        .file-list-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-list-header {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--pico-muted-color);
+            border-bottom: 2px solid var(--pico-muted-border-color);
+            gap: 12px;
+        }
+
+        .file-item-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            transition: background 0.15s ease;
+            gap: 12px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .file-item-row:hover {
+            background-color: var(--pico-primary-hover-background);
+        }
+
+        .file-item-row:last-child {
+            border-bottom: none;
+        }
+
+        .file-main-info {
+            flex: 1 1 auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            padding-right: 0;
+        }
+
+        .file-title-wrapper {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        .file-title-wrapper a {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-decoration: none;
+            line-height: 1.4;
+        }
+
+        .file-meta-sub {
+            display: none;
+            font-size: 0.75rem;
+            color: var(--pico-muted-color);
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+
+        .file-size-info {
+            width: 100px;
+            min-width: 100px;
+            flex-shrink: 0;
+            white-space: nowrap;
+            font-size: 0.85rem;
+            color: var(--pico-muted-color);
+            text-align: right;
+            padding-right: 8px;
+        }
+
+        .file-action-info {
+            flex: 0 0 auto;
+            min-width: 100px;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .download-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 4px !important;
+            height: 28px !important;
+            padding: 0 10px !important;
+            font-size: 0.8rem !important;
+            text-decoration: none !important;
+            margin: 0 !important;
+            border-radius: var(--pico-border-radius, 4px) !important;
+            white-space: nowrap !important;
+            box-sizing: border-box !important;
+        }
+
+        .parent-dir-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+            background: rgba(0, 0, 0, 0.02);
+            text-decoration: none;
+        }
+
+        [data-theme="dark"] .parent-dir-row {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Mobile breakpoint adjustments (< 768px) */
+        @media (max-width: 767.98px) {
+            .main-container {
+                width: 100%;
+                padding: 10px 8px 0;
+            }
+
+            main.main-container > article {
+                padding: 14px 10px;
+                border-radius: 8px;
+            }
+
+            .dir-header {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 12px !important;
+            }
+
+            .header-actions {
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .header-actions .lang-select {
+                flex: 1;
+            }
+
+            .file-list-header,
+            .file-size-info {
+                display: none !important;
+            }
+
+            .file-item-row {
+                padding: 12px 6px;
+            }
+
+            .file-title-wrapper a {
+                font-size: 0.95rem;
+            }
+
+            .file-meta-sub {
+                display: block !important;
+            }
+
+            .file-action-info {
+                width: auto !important;
+            }
+
+            .download-btn {
+                height: 34px !important;
+                padding: 0 12px !important;
+                font-size: 0.85rem !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="main-container">
+        <article>
+            <header class="dir-header" style="display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    % if ($logo_url) {
+                        <img src="<%= $logo_url %>" alt="<%= $site_name %>" style="height: 32px; width: auto; vertical-align: middle;">
+                    % }
+                    <div>
+                        <strong style="font-size: 1.2rem; display: inline-flex; align-items: center; gap: 6px;">
+                            <span class="material-symbols-outlined" style="color: var(--pico-primary-background);" aria-hidden="true">folder_open</span>
+                            <span><%= l('Directory Index') %></span>
+                        </strong>
+                        % if ($meta->{note}) {
+                        <p style="margin: 4px 0 0; color: var(--pico-muted-color); font-weight: normal; font-size: 0.85rem;">
+                            <%= $meta->{note} %>
+                        </p>
+                        % }
+                    </div>
+                </div>
+
+                <div class="header-actions" style="display: flex; gap: 8px; align-items: center;">
+                    <select class="lang-select secondary outline" onchange="location.href='/set-lang?lang=' + encodeURIComponent(this.value)">
+                        <option value="en" <%= languages =~ /^en/i ? 'selected' : '' %>>English</option>
+                        <option value="es" <%= languages =~ /^es/i ? 'selected' : '' %>>Español</option>
+                        <option value="de" <%= languages =~ /^de/i ? 'selected' : '' %>>Deutsch</option>
+                        <option value="fr" <%= languages =~ /^fr/i ? 'selected' : '' %>>Français</option>
+                        <option value="zh-cn" <%= languages =~ /^zh[-_]cn/i ? 'selected' : '' %>>简体中文</option>
+                        <option value="zh-tw" <%= languages =~ /^zh[-_](?:tw|hk)/i ? 'selected' : '' %>>繁體中文</option>
+                        <option value="ja" <%= languages =~ /^ja/i ? 'selected' : '' %>>日本語</option>
+                        <option value="ko" <%= languages =~ /^ko/i ? 'selected' : '' %>>한국어</option>
+                    </select>
+
+                    <button class="header-icon-btn secondary outline" onclick="toggleTheme()"
+                        title="<%= l('Toggle theme') %>" aria-label="<%= l('Toggle theme') %>">
+                        <span class="material-symbols-outlined" style="font-size: 1.05rem;" aria-hidden="true">dark_mode</span>
+                    </button>
+
+                    <button class="header-btn secondary outline" onclick="showQR(event)">
+                        <span class="material-symbols-outlined" style="font-size: 1.05rem;" aria-hidden="true">qr_code_2</span>
+                        <span><%= l('QR Code') %></span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- File List Container -->
+            <div class="file-list-container">
+                <!-- Desktop Header -->
+                <div class="file-list-header">
+                    <div style="flex: 1 1 auto; min-width: 0;"><%= l('File Name') %></div>
+                    <div class="file-size-info"><%= l('Size') %></div>
+                    <div class="file-action-info"><%= l('Action') %></div>
+                </div>
+
+                <!-- Upward Parent Directory Entry -->
+                % if ($cur_sub) {
+                <a href="../" class="parent-dir-row">
+                    <span class="material-symbols-outlined" style="color: var(--pico-muted-color);" aria-hidden="true">arrow_upward</span>
+                    <strong><%= l('.. (Parent)') %></strong>
+                </a>
+                % }
+
+                <!-- Directory Items -->
+                % for my $item (@$items) {
+                    % my $raw_name = $item->{name};
+                    % my $url_name = Mojo::Util::url_escape(Encode::encode_utf8($raw_name), '^A-Za-z0-9\-\._~');
+                <div class="file-item-row">
+                    <div class="file-main-info" title="<%= $raw_name %>">
+                        % if ($item->{is_dir}) {
+                            <span class="material-symbols-outlined" style="color: var(--pico-primary-background);" aria-hidden="true">folder</span>
+                            <div class="file-title-wrapper">
+                                <a href="<%= $url_name %>/"><%= $raw_name %></a>
+                                <span class="file-meta-sub">-</span>
+                            </div>
+                        % } else {
+                            <span class="material-symbols-outlined" style="color: var(--pico-muted-color);" aria-hidden="true">description</span>
+                            <div class="file-title-wrapper">
+                                <a href="<%= $url_name %>" target="_blank"><%= $raw_name %></a>
+                                <span class="file-meta-sub"><%= $item->{size} %></span>
+                            </div>
+                        % }
+                    </div>
+
+                    <div class="file-size-info">
+                        <small><%= $item->{size} %></small>
+                    </div>
+
+                    <div class="file-action-info">
+                        % unless ($item->{is_dir}) {
+                        <a href="<%= $url_name %>?download=1" role="button" class="download-btn secondary outline" title="<%= l('Download') %>">
+                            <span class="material-symbols-outlined" style="font-size: 1rem;" aria-hidden="true">download</span>
+                            <span><%= l('Download') %></span>
+                        </a>
+                        % }
+                    </div>
+                </div>
+                % }
+
+                <!-- Empty Directory Notice -->
+                % unless (@$items) {
+                <div style="text-align: center; color: var(--pico-muted-color); padding: 36px 0;">
+                    <%= l('Empty directory') %>
+                </div>
+                % }
+            </div>
+        </article>
+    </main>
+
+    % if ($footer_html) {
+    <footer style="max-width: 1280px; width: 95%; margin: 12px auto 20px; padding: 0; text-align: center; font-size: 0.8rem; line-height: 1.4; color: var(--pico-muted-color);">
+        <div style="margin: 0; padding: 0;"><%== $footer_html %></div>
+    </footer>
+    % }
+
+    <dialog id="qr-modal" onclick="if (event.target === this) closeQR(event);">
+        <article style="text-align: center; max-width: 350px;">
+            <header>
+                <button aria-label="Close" rel="prev" onclick="closeQR(event)"></button>
+                <p style="display: inline-flex; align-items: center; gap: 6px; margin-bottom: 0;">
+                    <span class="material-symbols-outlined" aria-hidden="true">qr_code_2</span>
+                    <strong><%= l('Scan to View on Mobile') %></strong>
+                </p>
+            </header>
+            <div style="background: white; padding: 15px; border-radius: 8px; display: inline-block; margin: 10px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                <canvas id="qr-canvas"></canvas>
+            </div>
+            <p id="qr-url-text" style="font-size: 0.75rem; word-break: break-all; color: var(--pico-muted-color); margin-bottom: 0;"></p>
+        </article>
+    </dialog>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+    <script>
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') ||
+                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            const target = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', target);
+            localStorage.setItem('pico_theme', target);
+        }
+
+        function showQR(e) {
+            e.preventDefault();
+            const modal = document.getElementById('qr-modal');
+            const targetUrl = window.location.href.split('?')[0];
+
+            document.getElementById('qr-url-text').textContent = targetUrl;
+            modal.showModal();
+
+            new QRious({
+                element: document.getElementById('qr-canvas'),
+                value: targetUrl,
+                size: 220,
+                background: 'white',
+                foreground: '#111928'
+            });
+        }
+
+        function closeQR(e) {
+            if (e) e.preventDefault();
+            document.getElementById('qr-modal').close();
+        }
+    </script>
+
+    % if ($custom_js) {
+        % if ($custom_js =~ m{^https?://} || $custom_js =~ m{^/}) {
+            <script src="<%= $custom_js %>" defer></script>
+        % } else {
+            <script><%== $custom_js %></script>
+        % }
+    % }
+</body>
+
+</html>
