@@ -4,6 +4,16 @@
 
 Fogshare is a minimalist, self-hosted file distribution and web showcase engine. It combines modern fog computing edge-lightweight principles with a straightforward sharing experience similar to macOS Sharing. Fogshare supports generating short URLs (such as `https://domain.com/$slug` or `https://$slug.domain.com`) primarily for single-file distribution, static demo hosting (HTML/SPA), centralized shared library reuse, and protected sharing with passwords and burn-after-reading quotas.
 
+## Screenshots
+
+| Active Shares Management | Repository & Storage |
+| :---: | :---: |
+| ![Active Shares](docs/images/admin-active.png) | ![Files Management](docs/images/admin-files.png) |
+
+| Directory Indexing | Code & Markdown Showcase |
+| :---: | :---: |
+| ![Directory View](docs/images/directory-view.png) | ![Showcase View](docs/images/showcase-view.png) |
+
 ## 2. Key Features
 
 1. **Single File & Static Site Hosting**: Native support for downloading and previewing files such as `.pdf`, `.md`, `.zip`, and `.tar.gz`; HTML files are served directly as web pages, with native support for shared library reuse (via `/_internal_files/` and `/_internal_libs/`).
