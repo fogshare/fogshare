@@ -22,7 +22,7 @@ Fogshare is a minimalist, self-hosted file distribution and web showcase engine.
 
 3. **Flexible Access Modes**: Supports both Path mode (slug appended to the primary domain) and Subdomain mode (slug mapped via wildcard subdomains).
 
-4. **Multi-language Localization (I18N)**: Built-in support for 8 languages (Simplified Chinese, Traditional Chinese, English, Japanese, Korean, German, French, and Spanish), automatically matching the visitor's browser locale with manual switching support.
+4. **Multi-language Localization (I18N)**: Built-in support for 8 languages (English, Spanish, German, French, Simplified Chinese, Traditional Chinese, Japanese and Korean), automatically matching the visitor's browser locale with manual switching support.
 
 5. **Security & Isolation Architecture**:
 
@@ -71,7 +71,24 @@ Data is automatically preserved inside the mounted `./data` directory. You can a
 
 * `APP_MAX_UPLOAD_MB`: Maximum allowed upload payload size in MB (default: `128`)
 
-> **Note**: When using subdomain mode, ensure wildcard DNS (`*.example.com`) resolves to your server IP address.
+### Option B: Bare-Metal / Host One-Line Installer
+
+Ideal for Linux VPS or physical servers without Docker. The installer detects the package manager (APT, DNF/YUM, APK, PKG), installs Perl runtime dependencies, configures an unprivileged system user, and provisions a Systemd service daemon.
+
+#### Run the installer
+
+```bash
+curl -fsSL https://github.com/fogshare/fogshare/raw/main/install.sh | sudo bash
+```
+
+Once installed, Fogshare starts automatically and listens on port `3647` by default. Inspect the service status or view generated credentials with:
+
+```bash
+sudo systemctl status fogshare
+sudo journalctl -u fogshare | grep -A 4 "Security Alert"
+```
+
+> **Note**: When using subdomain mode (`link_mode: "subdomain"`), ensure wildcard DNS (`*.example.com`) resolves to your server IP address.
 
 ## 4. Configuration Reference (`./data/fogshare.json`)
 
