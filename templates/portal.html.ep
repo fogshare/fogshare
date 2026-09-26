@@ -138,7 +138,7 @@
         <article style="margin: 0; padding: 40px 36px; text-align: center;">
             <div class="hero-icon">
                 % if ($logo_url) {
-                    <img src="<%= $logo_url \%>" alt="<\%= $site_name %>" style="max-height: 42px; max-width: 180px; width: auto; height: auto; object-fit: contain; vertical-align: middle; margin-bottom: 10px;">
+                    <img src="<%= $logo_url %>" alt="<%= $site_name %>" style="max-height: 42px; max-width: 180px; width: auto; height: auto; object-fit: contain; vertical-align: middle; margin-bottom: 10px;">
                 % } else {
                     <span class="material-symbols-outlined" style="font-size: 2.8rem; color: var(--pico-primary-background);" aria-hidden="true">bolt</span>
                 % }
