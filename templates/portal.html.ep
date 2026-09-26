@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
 
     % if ($custom_css) {
-        % if ($custom_css =~ m{^https?://} \vert{}\vert{}$custom_css =~ m{^/}) {
+        % if ($custom_css =~ m{^https?://} or $custom_css =~ m{^/}) {
             <link rel="stylesheet" href="<%= $custom_css %>">
         % } else {
             <style><%== $custom_css %></style>
@@ -206,7 +206,7 @@
     </script>
 
     % if ($custom_js) {
-        % if ($custom_js =~ m{^https?://} \vert{}\vert{}$custom_js =~ m{^/}) {
+        % if ($custom_js =~ m{^https?://} or $custom_js =~ m{^/}) {
             <script src="<%= $custom_js %>" defer></script>
         % } else {
             <script><%== $custom_js %></script>
