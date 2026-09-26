@@ -177,7 +177,6 @@
             document.documentElement.setAttribute('data-theme', target);
             localStorage.setItem('pico_theme', target);
         }
-
         function handleShuttle(e) {
             e.preventDefault();
             const input = document.getElementById('slug-input');
@@ -190,13 +189,19 @@
             const portStr = window.location.port ? (':' + window.location.port) : '';
             const protocol = window.location.protocol;
 
+            const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host === '[::1]';
+
             // Subdomain mode (e.g., https://pomikato.domain.com/ or https://pomikato.localhost:3642/)
             if (linkMode === 'subdomain') {
                 if (host === 'localhost' || host === '127.0.0.1') {
                     window.location.href = `${protocol}//${slug}.localhost${portStr}/`;
-                } else {
-                    window.location.href = `${protocol}//${slug}.${host}${portStr}/`;
+                    return;
                 }
+                if (isIp) {
+                    window.location.href = `/${slug}/`;
+                    return;
+                }
+                window.location.href = `${protocol}//${slug}.${host}${portStr}/`;
                 return;
             }
 
