@@ -57,17 +57,6 @@ sub register ($self, $app, $conf = {}) {
 
         my $host = lc($c->req->url->to_abs->host // '');
 
-        # Check for subdomain-based share routing (e.g., slug.localhost or slug.domain.com)
-        if ($host =~ /^([a-zA-Z0-9_\-]+)\.localhost$/i
-            || ($SHARE_DOMAIN && $host =~ /^([a-zA-Z0-9_\-]+)\.\Q$SHARE_DOMAIN\E$/i))
-        {
-            my $sub = $1;
-            unless ($sub eq 'admin' || $sub =~ $RESERVED_SLUGS_RE) {
-                $c->stash(slug => $sub, is_subdomain => 1);
-                return;
-            }
-        }
-
         # Check if the current host matches the configured admin domain or local hosts
         my $is_admin = (
             (defined $ADMIN_DOMAIN && length($ADMIN_DOMAIN) && $host eq lc($ADMIN_DOMAIN))
@@ -76,7 +65,21 @@ sub register ($self, $app, $conf = {}) {
             || $host eq '127.0.0.1'
             || $host eq '[::1]'
         );
-        $c->stash(is_admin_host => 1) if $is_admin;
+        if ($is_admin) {
+            $c->stash( is_admin_host => 1 );
+            return;
+        }
+
+        # Check for subdomain-based share routing (e.g., slug.localhost or slug.domain.com)
+        if ($host =~ /^([a-zA-Z0-9_\-]+)\.localhost$/i
+            || ($SHARE_DOMAIN && $host =~ /^([a-zA-Z0-9_\-]+)\.\Q$SHARE_DOMAIN\E$/i))
+        {
+            my $sub = $1;
+            unless ($sub =~ $RESERVED_SLUGS_RE) {
+                $c->stash(slug => $sub, is_subdomain => 1);
+                return;
+            }
+        }
     });
 
     # -------------------------------------------------------------------------
