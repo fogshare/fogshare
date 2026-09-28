@@ -37,8 +37,8 @@ my $safe_redirect_target = sub ($c, $slug) {
         return '/';
     }
 
-    # Mode 2: Path prefix routing (e.g., https://domain.com/slug/)
-    if ($ref =~ m{^(?:https?://\Q$host\E)?(/\Q$slug\E(?:/.*)?)$}) {
+    # Mode 2: Path prefix routing (e.g., /slug/)
+    if ($ref =~ m{^https?://[^/]+(/\Q$slug\E(?:/.*)?)$}) {
         my $path = $1;
         $path =~ s{(?:auth|verify)/?$}{};
         $path .= '/' unless $path =~ m{/$};
@@ -95,7 +95,7 @@ sub auth ($c) {
             path     => '/',
             httponly => 1,
             samesite => 'Lax',
-            secure   => ($is_secure_channel || $c->app->sessions->secure) ? 1 : 0,
+            secure => $is_secure_channel ? 1 : 0,
         );
 
         $c->cookie("auth_$slug" => "$ts:$token", \%cookie_opts);

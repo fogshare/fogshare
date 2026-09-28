@@ -1,8 +1,5 @@
 #
-# Fogshare - Systemd Service Unit for Bare-Metal / Host Deployment
-#
-# Copyright (c) 2026 Fogshare Contributors
-# Licensed under the MIT License.
+# Fogshare - Systemd Service Unit (Standalone Default)
 #
 
 [Unit]
@@ -16,36 +13,23 @@ User=fogshare
 Group=fogshare
 WorkingDirectory=/opt/fogshare
 
-# -----------------------------------------------------------------------------
-# Runtime Environment & Perl Dependency Path Configuration
-# -----------------------------------------------------------------------------
+# Load local environment overrides if present
+EnvironmentFile=-/opt/fogshare/.env
+
+# Default baseline environment variables
 Environment="MOJO_MODE=production"
 Environment="MOJO_REVERSE_PROXY=1"
 Environment="APP_DATA_DIR=/opt/fogshare/data"
 Environment="APP_CONFIG=/opt/fogshare/data/fogshare.json"
 Environment="APP_PASSWD_FILE=/opt/fogshare/data/passwd.json"
 
-# Option A: If dependencies are installed into project tree via local::lib:
-# Environment="PERL5LIB=/opt/fogshare/local/lib/perl5"
-# Environment="PATH=/opt/fogshare/local/bin:/usr/local/bin:/usr/bin:/bin"
-
-# Option B: If using perlbrew or plenv, specify the interpreter binary directly:
-# ExecStart=/home/fogshare/perl5/perlbrew/perls/perl-5.38.0/bin/starman --workers 4 --port 3647 /opt/fogshare/fogshared
-
-# Option C: Default system-wide Perl installation:
 ExecStart=/usr/bin/env starman --workers 4 --port 3647 /opt/fogshare/fogshared
 ExecReload=/bin/kill -HUP $MAINPID
 
-# -----------------------------------------------------------------------------
-# Reliability & Limits
-# -----------------------------------------------------------------------------
 Restart=always
 RestartSec=5
 LimitNOFILE=65535
 
-# -----------------------------------------------------------------------------
-# System Logging
-# -----------------------------------------------------------------------------
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=fogshare

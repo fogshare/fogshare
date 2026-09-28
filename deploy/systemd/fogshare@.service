@@ -1,0 +1,38 @@
+#
+# Fogshare - Systemd Multi-Tenant Instance Unit Template (%I)
+#
+
+[Unit]
+Description=Fogshare Node (%I)
+Documentation=https://github.com/fogshare/fogshare
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/www/%I
+
+# Load per-instance environment file
+EnvironmentFile=-/www/%I/.env
+
+# Sandbox fallback environment variables
+Environment="MOJO_MODE=production"
+Environment="MOJO_REVERSE_PROXY=1"
+Environment="APP_DATA_DIR=/www/%I/data"
+Environment="APP_CONFIG=/www/%I/data/fogshare.json"
+Environment="APP_PASSWD_FILE=/www/%I/data/passwd.json"
+
+ExecStart=/usr/bin/env starman --workers 4 --port ${APP_BACKEND_PORT} /www/%I/fogshared
+ExecReload=/bin/kill -HUP $MAINPID
+
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fogshare-%I
+
+[Install]
+WantedBy=multi-user.target
